@@ -48,10 +48,28 @@ class App extends React.Component {
   }
 
   render() {
+    const regStyle = {
+      border: '1px solid black',
+    }
+    const panelStyle = {
+      display: 'flex',
+      flexDirection: 'row'
+    }
+    const columnStyle = {
+      display: 'flex',
+      flexDirection: 'column'
+    }
     return (
-      <div>
-        <Registers registers = {this.state.registers} z80 = {this.state.z80}/>
-        <button onClick={this.handleClick}>Step</button>
+      <div style={panelStyle}>
+        <div style={columnStyle}>
+          <div style={regStyle}>
+            <Registers registers = {this.state.registers} z80 = {this.state.z80}/>
+          </div>
+          <button onClick={this.handleClick}>Step</button>
+        </div>
+        <div style={columnStyle}>
+          <p>Disassembly</p>
+        </div>
       </div>
     )
   }
