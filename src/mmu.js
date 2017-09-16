@@ -1,6 +1,7 @@
 export default class MMU {
   constructor() {
-    this.memory = [16384]
+    this.memoryBuffer = new ArrayBuffer(16384)
+    this.memory = new Uint8Array(this.memoryBuffer)
   }
 
   readByte(address) {

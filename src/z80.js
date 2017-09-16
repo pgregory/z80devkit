@@ -2,6 +2,7 @@ export default class Z80 {
   constructor(mmu) {
     this.mmu = mmu
     
+    const z80 = this
     this.instructions = [
       /* 00 */ { name: "NOP", exec: () => {}, length: 1 },
       /* 01 */ { name: "LD BC,nn", exec: () => {}, length: 3 },
@@ -9,7 +10,11 @@ export default class Z80 {
       /* 03 */ { name: "INC BC", exec: () => {}, length: 1 },
       /* 04 */ { name: "INC B", exec: () => {}, length: 1 },
       /* 05 */ { name: "DEC B", exec: () => {}, length: 1 },
-      /* 06 */ { name: "LD B,n", exec: () => {}, length: 2 },
+      /* 06 */ { name: "LD B,n", exec: () => { 
+        const n = z80.mmu.readByte(z80.reg16[z80.PC] + 1) 
+        console.log(n)
+        z80.reg8[z80.B] = n
+      }, length: 2 },
       /* 07 */ { name: "RLCA", exec: () => {}, length: 1 },
       /* 08 */ { name: "EX AF,AF'", exec: () => {}, length: 1 },
       /* 09 */ { name: "ADD HL,BC", exec: () => {}, length: 1 },
@@ -842,5 +847,11 @@ export default class Z80 {
 
   getRegister16(reg) {
     return this.reg16[reg]
+  }
+
+  stepExecution() {
+    const opcode = this.mmu.readByte(this.reg16[this.PC])
+    this.instructions[opcode].exec()
+    this.reg16[this.PC] += this.instructions[opcode].length
   }
 }

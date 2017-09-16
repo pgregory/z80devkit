@@ -1,22 +1,13 @@
 import React from 'react'
 
 class Registers extends React.Component {
-  constructor(props) {
-    super(props)
-
-    this.state = {
-      registers: {
-        A: this.props.z80.getRegister8(this.props.z80.A),
-      }
-    }
-  }
   render() {
     return (
       <div>
         <table>
           <tbody>
             <tr>
-              <th>A:</th><td span="2">{this.state.registers.A}</td>
+              <th>A:</th><td span="2">{this.props.registers.A}</td>
             </tr>
             <tr>
               <th>BC:</th><td>{this.props.registers.B}</td><td>{this.props.registers.C}</td>
@@ -28,7 +19,16 @@ class Registers extends React.Component {
               <th>HL:</th><td>{this.props.registers.H}</td><td>{this.props.registers.L}</td>
             </tr>
             <tr>
-              <th>IX:</th><td>{this.props.registers.H}</td><td>{this.props.registers.L}</td>
+              <th>IX:</th><td span="2">{this.props.registers.IX}</td>
+            </tr>
+            <tr>
+              <th>IY:</th><td span="2">{this.props.registers.IY}</td>
+            </tr>
+            <tr>
+              <th>PC:</th><td span="2">{this.props.registers.PC}</td>
+            </tr>
+            <tr>
+              <th>SP:</th><td span="2">{this.props.registers.SP}</td>
             </tr>
           </tbody>
         </table>
