@@ -9,7 +9,8 @@ module.exports = {
   plugins: [
     new CleanWebpackPlugin(['dist']),
     new HtmlWebpackPlugin({
-      title: 'Hot Module Replacement',
+      title: 'Z80 Development Kit',
+      template: './src/index.html',
     }),
   ],
   output: {
@@ -18,6 +19,16 @@ module.exports = {
   },
   module: {
     rules: [
+      {
+        test: /\.jsx?$/,
+        exclude: /(node_modules)/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['es2015', 'react'],
+          },
+        },
+      },
       {
         test: /\.css$/,
         use: [
