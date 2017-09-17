@@ -11,9 +11,8 @@ export default class Z80 {
       /* 04 */ { name: "INC B", exec: () => {}, length: 1 },
       /* 05 */ { name: "DEC B", exec: () => {}, length: 1 },
       /* 06 */ { name: "LD B,n", exec: () => { 
-        const n = z80.mmu.readByte(z80.reg16[z80.PC] + 1) 
-        console.log(n)
-        z80.reg8[z80.B] = n
+        const n = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
+        z80.reg8[z80.regOffsets8.B] = n
       }, length: 2 },
       /* 07 */ { name: "RLCA", exec: () => {}, length: 1 },
       /* 08 */ { name: "EX AF,AF'", exec: () => {}, length: 1 },
@@ -789,69 +788,98 @@ export default class Z80 {
     this.reg8 = new Uint8Array(this.registers)
 
     // 16 bit indices into the register array
-    this.AF = 0
-    this.BC = 1
-    this.DE = 2
-    this.HL = 3
-    this.AF_ = 4
-    this.BC_ = 5
-    this.DE_ = 6
-    this.HL_ = 7
-    this.IX = 8
-    this.IY = 9
-    this.IR = 10
-    this.SP = 11
-    this.PC = 12
+    this.regOffsets16 = {
+      AF: 0,
+      BC: 1,
+      DE: 2,
+      HL: 3,
+      AF_: 4,
+      BC_: 5,
+      DE_: 6,
+      HL_: 7,
+      IX: 8,
+      IY: 9,
+      IR: 10,
+      SP: 11,
+      PC: 12,
+    }
 
     // TODO: Presume little endian for now.
     // 8 bit indices into the register array
-    this.A = 1
-    this.F = 0
-    this.B = 3
-    this.C = 2
-    this.D = 5
-    this.E = 4
-    this.H = 7
-    this.L = 6
-    this.A_ = 9
-    this.F_ = 8
-    this.B_ = 11
-    this.C_ = 10
-    this.D_ = 13
-    this.E_ = 12
-    this.H_ = 15
-    this.L_ = 14
-    this.IXh = 17
-    this.IXl = 16
-    this.IYh = 19
-    this.IYl = 18
-    this.I = 21
-    this.R = 20
+    this.regOffsets8 = {
+      A: 1,
+      F: 0,
+      B: 3,
+      C: 2,
+      D: 5,
+      E: 4,
+      H: 7,
+      L: 6,
+      A_: 9,
+      F_: 8,
+      B_: 11,
+      C_: 10,
+      D_: 13,
+      E_: 12,
+      H_: 15,
+      L_: 14,
+      IXh: 17,
+      IXl: 16,
+      IYh: 19,
+      IYl: 18,
+      I: 21,
+      R: 20,
+    }
 
+    this.flagMasks = {
+      S: 0x80,
+      Z: 0x40,
+      Y: 0x20,
+      H: 0x10,
+      X: 0x08,
+      P: 0x04,
+      N: 0x02,
+      C: 0x01,
+    }
+
+    this.flagShift = {
+      S: 7,
+      Z: 6,
+      Y: 5,
+      H: 4,
+      X: 3,
+      P: 2,
+      N: 1,
+      C: 0,
+    }
 
     this.reset()
   }
 
   reset() {
-    this.reg16[this.AF] = 0xFFFF
-    this.reg16[this.BC] = 0xFFFF
-    this.reg16[this.DE] = 0xFFFF
-    this.reg16[this.HL] = 0xFFFF
-    this.reg16[this.SP] = 0
-    this.reg16[this.PC] = 0
+    this.reg16[this.regOffsets16.AF] = 0xFFFF
+    this.reg16[this.regOffsets16.BC] = 0xFFFF
+    this.reg16[this.regOffsets16.DE] = 0xFFFF
+    this.reg16[this.regOffsets16.HL] = 0xFFFF
+    this.reg16[this.regOffsets16.SP] = 0
+    this.reg16[this.regOffsets16.PC] = 0
   }
 
   getRegister8(reg) {
-    return this.reg8[reg]
+    return this.reg8[this.regOffsets8[reg]]
   }
 
   getRegister16(reg) {
-    return this.reg16[reg]
+    return this.reg16[this.regOffsets16[reg]]
+  }
+
+  getFlag(flag) {
+    return (this.reg8[this.regOffsets8.F] & this.flagMasks[flag]) >> this.flagShift[flag]
   }
 
   stepExecution() {
-    const opcode = this.mmu.readByte(this.reg16[this.PC])
+    const opcode = this.mmu.readByte(this.reg16[this.regOffsets16.PC])
     this.instructions[opcode].exec()
-    this.reg16[this.PC] += this.instructions[opcode].length
+    this.reg16[this.regOffsets16.PC] += this.instructions[opcode].length
   }
 }
