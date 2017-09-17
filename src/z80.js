@@ -4,16 +4,29 @@ export default class Z80 {
     
     const z80 = this
     this.instructions = [
-      /* 00 */ { name: "NOP", exec: () => {}, length: 1 },
-      /* 01 */ { name: "LD BC,nn", exec: () => {}, length: 3 },
+      /* 00 */ { name: "NOP", exec() {}, length: 1 },
+      /* 01 */ { 
+        name: "LD BC,\\1\\2H", 
+        exec: () => {
+          const n1 = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
+          const n2 = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
+          // TODO: Is this construction right?
+          z80.reg16[z80.regOffsets16.BC] = n1 << 8 + n2
+        }, 
+        length: 3 
+      },
       /* 02 */ { name: "LD (BC),A", exec: () => {}, length: 1 },
       /* 03 */ { name: "INC BC", exec: () => {}, length: 1 },
       /* 04 */ { name: "INC B", exec: () => {}, length: 1 },
       /* 05 */ { name: "DEC B", exec: () => {}, length: 1 },
-      /* 06 */ { name: "LD B,n", exec: () => { 
-        const n = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
-        z80.reg8[z80.regOffsets8.B] = n
-      }, length: 2 },
+      /* 06 */ { 
+        name: 'LD B,\\1H',
+        exec: () => { 
+          const n = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
+          z80.reg8[z80.regOffsets8.B] = n
+        }, 
+        length: 2 
+      },
       /* 07 */ { name: "RLCA", exec: () => {}, length: 1 },
       /* 08 */ { name: "EX AF,AF'", exec: () => {}, length: 1 },
       /* 09 */ { name: "ADD HL,BC", exec: () => {}, length: 1 },
@@ -21,15 +34,15 @@ export default class Z80 {
       /* 0B */ { name: "DEC BC", exec: () => {}, length: 1 },
       /* 0C */ { name: "INC C", exec: () => {}, length: 1 },
       /* 0D */ { name: "DEC C", exec: () => {}, length: 1 },
-      /* 0E */ { name: "LD C,n", exec: () => {}, length: 2 },
+      /* 0E */ { name: "LD C,\\1H", exec: () => {}, length: 2 },
       /* 0F */ { name: "RRCA", exec: () => {}, length: 1 },
       /* 10 */ { name: "DJNZ e", exec: () => {}, length: 2 },
-      /* 11 */ { name: "LD DE,nn", exec: () => {}, length: 3 },
+      /* 11 */ { name: "LD DE,\\1\\2H", exec: () => {}, length: 3 },
       /* 12 */ { name: "LD (DE),A", exec: () => {}, length: 1 },
       /* 13 */ { name: "INC DE", exec: () => {}, length: 1 },
       /* 14 */ { name: "INC D", exec: () => {}, length: 1 },
       /* 15 */ { name: "DEC D", exec: () => {}, length: 1 },
-      /* 16 */ { name: "LD D,n", exec: () => {}, length: 2 },
+      /* 16 */ { name: "LD D,\\1H", exec: () => {}, length: 2 },
       /* 17 */ { name: "RLA", exec: () => {}, length: 1 },
       /* 18 */ { name: "JR e", exec: () => {}, length: 2 },
       /* 19 */ { name: "ADD HL,DE", exec: () => {}, length: 1 },
@@ -37,39 +50,46 @@ export default class Z80 {
       /* 1B */ { name: "DEC DE", exec: () => {}, length: 1 },
       /* 1C */ { name: "INC E", exec: () => {}, length: 1 },
       /* 1D */ { name: "DEC E", exec: () => {}, length: 1 },
-      /* 1E */ { name: "LD E,n", exec: () => {}, length: 2 },
+      /* 1E */ { name: "LD E,\\1H", exec: () => {}, length: 2 },
       /* 1F */ { name: "RRA", exec: () => {}, length: 1 },
       /* 20 */ { name: "JR NZ,e", exec: () => {}, length: 2 },
-      /* 21 */ { name: "LD HL,nn", exec: () => {}, length: 3 },
-      /* 22 */ { name: "LD (nn),HL", exec: () => {}, length: 3 },
+      /* 21 */ { name: "LD HL,\\1\\2H", exec: () => {}, length: 3 },
+      /* 22 */ { name: "LD (\\1\\2H),HL", exec: () => {}, length: 3 },
       /* 23 */ { name: "INC HL", exec: () => {}, length: 1 },
       /* 24 */ { name: "INC H", exec: () => {}, length: 1 },
       /* 25 */ { name: "DEC H", exec: () => {}, length: 1 },
-      /* 26 */ { name: "LD H,n", exec: () => {}, length: 2 },
+      /* 26 */ { name: "LD H,\\1H", exec: () => {}, length: 2 },
       /* 27 */ { name: "DAA", exec: () => {}, length: 1 },
-      /* 28 */ { name: "JR Z,e", exec: () => {}, length: 2 },
+      /* 28 */ { name: "JR Z,\\1H", exec: () => {}, length: 2 },
       /* 29 */ { name: "ADD HL,HL", exec: () => {}, length: 1 },
-      /* 2A */ { name: "LD HL,(nn)", exec: () => {}, length: 3 },
+      /* 2A */ { name: "LD HL,(\\1\\2H)", exec: () => {}, length: 3 },
       /* 2B */ { name: "DEC HL", exec: () => {}, length: 1 },
       /* 2C */ { name: "INC L", exec: () => {}, length: 1 },
       /* 2D */ { name: "DEC L", exec: () => {}, length: 1 },
-      /* 2E */ { name: "LD L,n", exec: () => {}, length: 2 },
+      /* 2E */ { name: "LD L,\\1H", exec: () => {}, length: 2 },
       /* 2F */ { name: "CPL", exec: () => {}, length: 1 },
       /* 30 */ { name: "JR NC,(PC+e)", exec: () => {}, length: 2 },
-      /* 31 */ { name: "LD SP,nn", exec: () => {}, length: 3 },
-      /* 32 */ { name: "LD (nn),A", exec: () => {}, length: 3 },
+      /* 31 */ { name: "LD SP,\\1\\2H", exec: () => {}, length: 3 },
+      /* 32 */ { name: "LD (\\1\\2H),A", exec: () => {}, length: 3 },
       /* 33 */ { name: "INC SP", exec: () => {}, length: 1 },
       /* 34 */ { name: "INC (HL)", exec: () => {}, length: 1 },
       /* 35 */ { name: "DEC (HL)", exec: () => {}, length: 1 },
-      /* 36 */ { name: "LD (HL),n", exec: () => {}, length: 2 },
+      /* 36 */ { name: "LD (HL),\\1H", exec: () => {}, length: 2 },
       /* 37 */ { name: "SCF", exec: () => {}, length: 1 },
       /* 38 */ { name: "JR C,e", exec: () => {}, length: 2 },
       /* 39 */ { name: "ADD HL,SP", exec: () => {}, length: 1 },
-      /* 3A */ { name: "LA A,(nn)", exec: () => {}, length: 3 },
+      /* 3A */ { name: "LA A,(\\1\\2H)", exec: () => {}, length: 3 },
       /* 3B */ { name: "DEC SP", exec: () => {}, length: 1 },
       /* 3C */ { name: "INC A", exec: () => {}, length: 1 },
       /* 3D */ { name: "DEC A", exec: () => {}, length: 1 },
-      /* 3E */ { name: "LA A,n", exec: () => {}, length: 2 },
+      /* 3E */ {
+        name: "LA A,\\1H",
+        exec: () => {
+          const n1 = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
+          z80.reg8[z80.regOffsets8.A] = n1
+        },
+        length: 2
+      },
       /* 3F */ { name: "CCF", exec: () => {}, length: 1 },
       /* 40 */ { name: "LD B,B", exec: () => {}, length: 1 },
       /* 41 */ { name: "LD B,C", exec: () => {}, length: 1 },
@@ -135,7 +155,17 @@ export default class Z80 {
       /* 7D */ { name: "LD A,L", exec: () => {}, length: 1 },
       /* 7E */ { name: "LD A,(HL)", exec: () => {}, length: 1 },
       /* 7F */ { name: "LD A,A", exec: () => {}, length: 1 },
-      /* 80 */ { name: "ADD A,B", exec: () => {}, length: 1 },
+      /* 80 */ {
+        name: "ADD A,B",
+        exec: () => {
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.reg8[z80.regOffsets8.B]
+          const res = a + b
+          z80.reg8[z80.regOffsets8.A] = res
+          z80.updateFlags["***V0*"](a, b, res)
+        },
+        length: 1,
+      },
       /* 81 */ { name: "ADD A,C", exec: () => {}, length: 1 },
       /* 82 */ { name: "ADD A,D", exec: () => {}, length: 1 },
       /* 83 */ { name: "ADD A,E", exec: () => {}, length: 1 },
@@ -201,68 +231,68 @@ export default class Z80 {
       /* BF */ { name: "CP A", exec: () => {}, length: 1 },
       /* C0 */ { name: "RET NZ", exec: () => {}, length: 1 },
       /* C1 */ { name: "POP BC", exec: () => {}, length: 1 },
-      /* C2 */ { name: "JP NZ,nn", exec: () => {}, length: 3 },
-      /* C3 */ { name: "JP nn", exec: () => {}, length: 3 },
-      /* C4 */ { name: "CALL NZ,nn", exec: () => {}, length: 3 },
+      /* C2 */ { name: "JP NZ,\\1\\2H", exec: () => {}, length: 3 },
+      /* C3 */ { name: "JP \\1\\2H", exec: () => {}, length: 3 },
+      /* C4 */ { name: "CALL NZ,\\1\\2H", exec: () => {}, length: 3 },
       /* C5 */ { name: "PUSH BC", exec: () => {}, length: 1 },
-      /* C6 */ { name: "ADD A,n", exec: () => {}, length: 2 },
-      /* C7 */ { name: "RST &00", exec: () => {}, length: 1 },
+      /* C6 */ { name: "ADD A,\\1H", exec: () => {}, length: 2 },
+      /* C7 */ { name: "RST 00H", exec: () => {}, length: 1 },
       /* C8 */ { name: "RET Z", exec: () => {}, length: 1 },
       /* C9 */ { name: "RET", exec: () => {}, length: 1 },
-      /* CA */ { name: "JP Z,nn", exec: () => {}, length: 3 },
+      /* CA */ { name: "JP Z,\\1\\2H", exec: () => {}, length: 3 },
       /* CB */ { name: "**** CB ****", exec: () => {}, length: 0 },
-      /* CC */ { name: "CALL Z,nn", exec: () => {}, length: 3 },
-      /* CD */ { name: "CALL nn", exec: () => {}, length: 3 },
-      /* CE */ { name: "ADC A,n", exec: () => {}, length: 2 },
-      /* CF */ { name: "RST &08", exec: () => {}, length: 1 },
+      /* CC */ { name: "CALL Z,\\1\\2H", exec: () => {}, length: 3 },
+      /* CD */ { name: "CALL \\1\\2H", exec: () => {}, length: 3 },
+      /* CE */ { name: "ADC A,\\1H", exec: () => {}, length: 2 },
+      /* CF */ { name: "RST 08H", exec: () => {}, length: 1 },
       /* D0 */ { name: "RET NC", exec: () => {}, length: 1 },
       /* D1 */ { name: "POP DE", exec: () => {}, length: 1 },
-      /* D2 */ { name: "JP NC,nn", exec: () => {}, length: 3 },
-      /* D3 */ { name: "OUT (n),A", exec: () => {}, length: 2 },
-      /* D4 */ { name: "CALL NC,nn", exec: () => {}, length: 3 },
+      /* D2 */ { name: "JP NC,\\1\\2H", exec: () => {}, length: 3 },
+      /* D3 */ { name: "OUT (\\1H),A", exec: () => {}, length: 2 },
+      /* D4 */ { name: "CALL NC,\\1\\2H", exec: () => {}, length: 3 },
       /* D5 */ { name: "PUSH DE", exec: () => {}, length: 1 },
-      /* D6 */ { name: "SUB A,n", exec: () => {}, length: 2 },
-      /* D7 */ { name: "RST &10", exec: () => {}, length: 1 },
+      /* D6 */ { name: "SUB A,\\1H", exec: () => {}, length: 2 },
+      /* D7 */ { name: "RST 10H", exec: () => {}, length: 1 },
       /* D8 */ { name: "RET C", exec: () => {}, length: 1 },
       /* D9 */ { name: "EXX", exec: () => {}, length: 1 },
-      /* DA */ { name: "JP C,nn", exec: () => {}, length: 3 },
-      /* DB */ { name: "IN A,(n)", exec: () => {}, length: 2 },
-      /* DC */ { name: "CALL C,nn", exec: () => {}, length: 3 },
+      /* DA */ { name: "JP C,\\1\\2H", exec: () => {}, length: 3 },
+      /* DB */ { name: "IN A,(\\1H)", exec: () => {}, length: 2 },
+      /* DC */ { name: "CALL C,\\1\\2H", exec: () => {}, length: 3 },
       /* DD */ { name: "**** DD ****", exec: () => {}, length: 1 },
-      /* DE */ { name: "SBC A,n", exec: () => {}, length: 2 },
-      /* DF */ { name: "RST &18", exec: () => {}, length: 1 },
+      /* DE */ { name: "SBC A,\\1H", exec: () => {}, length: 2 },
+      /* DF */ { name: "RST 18H", exec: () => {}, length: 1 },
       /* E0 */ { name: "RET PO", exec: () => {}, length: 1 },
       /* E1 */ { name: "POP HL", exec: () => {}, length: 1 },
-      /* E2 */ { name: "JP PO,nn", exec: () => {}, length: 3 },
+      /* E2 */ { name: "JP PO,\\1\\2H", exec: () => {}, length: 3 },
       /* E3 */ { name: "EX (SP),HL", exec: () => {}, length: 1 },
-      /* E4 */ { name: "CAlL PO,nn", exec: () => {}, length: 3 },
+      /* E4 */ { name: "CAlL PO,\\1\\2H", exec: () => {}, length: 3 },
       /* E5 */ { name: "PUSH HL", exec: () => {}, length: 1 },
-      /* E6 */ { name: "AND n", exec: () => {}, length: 2 },
-      /* E7 */ { name: "RST &20", exec: () => {}, length: 1 },
+      /* E6 */ { name: "AND \\1H", exec: () => {}, length: 2 },
+      /* E7 */ { name: "RST 20H", exec: () => {}, length: 1 },
       /* E8 */ { name: "RET PE", exec: () => {}, length: 1 },
       /* E9 */ { name: "JP (HL)", exec: () => {}, length: 1 },
-      /* EA */ { name: "JP PE,nn", exec: () => {}, length: 3 },
+      /* EA */ { name: "JP PE,\\1\\2H", exec: () => {}, length: 3 },
       /* EB */ { name: "EX DE,HL", exec: () => {}, length: 1 },
-      /* EC */ { name: "CALL PE,nn", exec: () => {}, length: 3 },
+      /* EC */ { name: "CALL PE,\\1\\2H", exec: () => {}, length: 3 },
       /* ED */ { name: "**** ED ****", exec: () => {}, length: 0 },
-      /* EE */ { name: "XOR n", exec: () => {}, length: 2 },
-      /* EF */ { name: "RST &28", exec: () => {}, length: 1 },
+      /* EE */ { name: "XOR \\1H", exec: () => {}, length: 2 },
+      /* EF */ { name: "RST 28H", exec: () => {}, length: 1 },
       /* F0 */ { name: "RET P", exec: () => {}, length: 1 },
       /* F1 */ { name: "POP AF", exec: () => {}, length: 1 },
-      /* F2 */ { name: "JP P,nn", exec: () => {}, length: 3 },
+      /* F2 */ { name: "JP P,\\1\\2H", exec: () => {}, length: 3 },
       /* F3 */ { name: "DI", exec: () => {}, length: 1 },
-      /* F4 */ { name: "CALL P,nn", exec: () => {}, length: 3 },
+      /* F4 */ { name: "CALL P,\\1\\2H", exec: () => {}, length: 3 },
       /* F5 */ { name: "PUSH AF", exec: () => {}, length: 1 },
-      /* F6 */ { name: "OR n", exec: () => {}, length: 2 },
-      /* F7 */ { name: "RST &30", exec: () => {}, length: 1 },
+      /* F6 */ { name: "OR \\1H", exec: () => {}, length: 2 },
+      /* F7 */ { name: "RST 30H", exec: () => {}, length: 1 },
       /* F8 */ { name: "RET M", exec: () => {}, length: 1 },
       /* F9 */ { name: "LD SP,HL", exec: () => {}, length: 1 },
-      /* FA */ { name: "JP M,nn", exec: () => {}, length: 3 },
+      /* FA */ { name: "JP M,\\1\\2H", exec: () => {}, length: 3 },
       /* FB */ { name: "EI", exec: () => {}, length: 1 },
-      /* FC */ { name: "CALL M,nn", exec: () => {}, length: 3 },
+      /* FC */ { name: "CALL M,\\1\\2H", exec: () => {}, length: 3 },
       /* FD */ { name: "**** FD ****", exec: () => {}, length: 1 },
-      /* FE */ { name: "CP n", exec: () => {}, length: 2 },
-      /* FF */ { name: "RST &38", exec: () => {}, length: 1 },
+      /* FE */ { name: "CP \\1H", exec: () => {}, length: 2 },
+      /* FF */ { name: "RST 38H", exec: () => {}, length: 1 },
     ]
 
     this.cb_instructions = [
@@ -592,7 +622,7 @@ export default class Z80 {
       /* 40 */ { name: "IN B,(C)", exec: () => {}, length: 2 },
       /* 41 */ { name: "OUT (C),B", exec: () => {}, length: 2 },
       /* 42 */ { name: "SBC HL,BC", exec: () => {}, length: 2 },
-      /* 43 */ { name: "LD (nn),BC", exec: () => {}, length: 4 },
+      /* 43 */ { name: "LD (\\1\\2H),BC", exec: () => {}, length: 4 },
       /* 44 */ { name: "NEG", exec: () => {}, length: 2 },
       /* 45 */ { name: "RETN", exec: () => {}, length: 2 },
       /* 46 */ { name: "IM 0", exec: () => {}, length: 2 },
@@ -600,7 +630,7 @@ export default class Z80 {
       /* 48 */ { name: "IN C,(C)", exec: () => {}, length: 2 },
       /* 49 */ { name: "OUT (C),C", exec: () => {}, length: 2 },
       /* 4A */ { name: "ADC HL,BC", exec: () => {}, length: 2 },
-      /* 4B */ { name: "LD BC,(nn)", exec: () => {}, length: 4 },
+      /* 4B */ { name: "LD BC,(\\1\\2H)", exec: () => {}, length: 4 },
       /* 4C */ { name: "NEG", exec: () => {}, length: 2 },
       /* 4D */ { name: "RETI", exec: () => {}, length: 2 },
       /* 4E */ { name: "IM 0/1", exec: () => {}, length: 2 },
@@ -608,7 +638,7 @@ export default class Z80 {
       /* 50 */ { name: "IN D,(C)", exec: () => {}, length: 2 },
       /* 51 */ { name: "OUT (C),D", exec: () => {}, length: 2 },
       /* 52 */ { name: "SBC HL,DE", exec: () => {}, length: 2 },
-      /* 53 */ { name: "LD (nn),DE", exec: () => {}, length: 4 },
+      /* 53 */ { name: "LD (\\1\\2H),DE", exec: () => {}, length: 4 },
       /* 54 */ { name: "NEG", exec: () => {}, length: 2 },
       /* 55 */ { name: "RETN", exec: () => {}, length: 2 },
       /* 56 */ { name: "IM 1", exec: () => {}, length: 2 },
@@ -616,7 +646,7 @@ export default class Z80 {
       /* 58 */ { name: "IN E,(C)", exec: () => {}, length: 2 },
       /* 59 */ { name: "OUT (C),E", exec: () => {}, length: 2 },
       /* 5A */ { name: "ADC HL,DE", exec: () => {}, length: 2 },
-      /* 5B */ { name: "LD DE,(nn)", exec: () => {}, length: 4 },
+      /* 5B */ { name: "LD DE,(\\1\\2H)", exec: () => {}, length: 4 },
       /* 5C */ { name: "NEG", exec: () => {}, length: 2 },
       /* 5D */ { name: "RETN", exec: () => {}, length: 2 },
       /* 5E */ { name: "IM 2", exec: () => {}, length: 2 },
@@ -624,7 +654,7 @@ export default class Z80 {
       /* 60 */ { name: "IN H,(C)", exec: () => {}, length: 2 },
       /* 61 */ { name: "OUT (C),H", exec: () => {}, length: 2 },
       /* 62 */ { name: "SBC HL,HL", exec: () => {}, length: 2 },
-      /* 63 */ { name: "LD (nn),HL", exec: () => {}, length: 4 },
+      /* 63 */ { name: "LD (\\1\\2H),HL", exec: () => {}, length: 4 },
       /* 64 */ { name: "NEG", exec: () => {}, length: 2 },
       /* 65 */ { name: "RETN", exec: () => {}, length: 2 },
       /* 66 */ { name: "IM 0", exec: () => {}, length: 2 },
@@ -632,7 +662,7 @@ export default class Z80 {
       /* 68 */ { name: "IN L,(C)", exec: () => {}, length: 2 },
       /* 69 */ { name: "OUT (C),L", exec: () => {}, length: 2 },
       /* 6A */ { name: "ADC HL,HL", exec: () => {}, length: 2 },
-      /* 6B */ { name: "LD HL,(nn)", exec: () => {}, length: 4 },
+      /* 6B */ { name: "LD HL,(\\1\\2H)", exec: () => {}, length: 4 },
       /* 6C */ { name: "NEG", exec: () => {}, length: 2 },
       /* 6D */ { name: "RETN", exec: () => {}, length: 2 },
       /* 6E */ { name: "IM 0/1", exec: () => {}, length: 2 },
@@ -640,7 +670,7 @@ export default class Z80 {
       /* 70 */ { name: "IN F,(C) / IN (C)", exec: () => {}, length: 2 },
       /* 71 */ { name: "OUT (C),0", exec: () => {}, length: 2 },
       /* 72 */ { name: "SBC HL,SP", exec: () => {}, length: 2 },
-      /* 73 */ { name: "LD (nn),SP", exec: () => {}, length: 4 },
+      /* 73 */ { name: "LD (\\1\\2H),SP", exec: () => {}, length: 4 },
       /* 74 */ { name: "NEG", exec: () => {}, length: 2 },
       /* 75 */ { name: "RETN", exec: () => {}, length: 2 },
       /* 76 */ { name: "IM 1", exec: () => {}, length: 2 },
@@ -648,7 +678,7 @@ export default class Z80 {
       /* 78 */ { name: "IN A,(C)", exec: () => {}, length: 2 },
       /* 79 */ { name: "OUT (C),A", exec: () => {}, length: 2 },
       /* 7A */ { name: "ADC HL,SP", exec: () => {}, length: 2 },
-      /* 7B */ { name: "LD SP,(nn)", exec: () => {}, length: 4 },
+      /* 7B */ { name: "LD SP,(\\1\\2H)", exec: () => {}, length: 4 },
       /* 7C */ { name: "NEG", exec: () => {}, length: 2 },
       /* 7D */ { name: "RETN", exec: () => {}, length: 2 },
       /* 7E */ { name: "IM 2", exec: () => {}, length: 2 },
@@ -783,6 +813,48 @@ export default class Z80 {
       /* FF */ { name: "", exec: () => {}, length: 2 },
     ]
 
+    // Set of functions to update flags based on and encoded description
+    // of the flags affected by the last instruction.
+    // - = unaffected
+    // * = affected as per normal rules
+    // 0 = reset
+    // 1 = set
+    // V = Overflow
+    // P = Parity
+    this.updateFlags = {
+      "******": (a,b,r) => {},
+      "****1-": (a,b,r) => {},
+      "***?1-": (a,b,r) => {},
+      "***P-*": (a,b,r) => {},
+      "***P0-": (a,b,r) => {},
+      "***P00": (a,b,r) => {},
+      "***V0*": (a,b,r) => {
+        const flags = (((r & 0x80)? 1 : 0) << this.flagShift.S) | 
+                      ((!(r & 0xFF)? 1 : 0) << this.flagShift.Z) |
+                      (((r & 0x20)? 1 : 0) << this.flagShift.Y) |
+                      (((((a & 0xF) + (b & 0xF)) & 0x10)? 1 : 0) << this.flagShift.H) |
+                      (((r & 0x08)? 1 : 0) << this.flagShift.X) |
+                      ((((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80))? 1 : 0) << this.flagShift.P) |
+                      (((r > 255)? 1 : 0) << this.flagShift.C)
+        this.reg8[this.regOffsets8.F] = flags
+      },
+      "***V0-": (a,b,r) => {},
+      "***V1*": (a,b,r) => {},
+      "***V1-": (a,b,r) => {},
+      "**0*0-": (a,b,r) => {},
+      "**0P0*": (a,b,r) => {},
+      "**0P0-": (a,b,r) => {},
+      "**1*0-": (a,b,r) => {},
+      "--*-0*": (a,b,r) => {},
+      "------": (a,b,r) => {},
+      "--0*0-": (a,b,r) => {},
+      "--0-0*": (a,b,r) => {},
+      "--0-01": (a,b,r) => {},
+      "--000-": (a,b,r) => {},
+      "--1-1-": (a,b,r) => {},
+      "01*?1-": (a,b,r) => {},
+    }
+
     this.registers = new ArrayBuffer(26)
     this.reg16 = new Uint16Array(this.registers)
     this.reg8 = new Uint8Array(this.registers)
@@ -831,7 +903,7 @@ export default class Z80 {
       R: 20,
     }
 
-    this.flagMasks = {
+    this.flagBits = {
       S: 0x80,
       Z: 0x40,
       Y: 0x20,
@@ -840,6 +912,17 @@ export default class Z80 {
       P: 0x04,
       N: 0x02,
       C: 0x01,
+    }
+
+    this.flagMasks = {
+      S: 0x7F,
+      Z: 0xBF,
+      Y: 0xDF,
+      H: 0xEF,
+      X: 0xF7,
+      P: 0xFB,
+      N: 0xFD,
+      C: 0xFE,
     }
 
     this.flagShift = {
@@ -874,7 +957,27 @@ export default class Z80 {
   }
 
   getFlag(flag) {
-    return (this.reg8[this.regOffsets8.F] & this.flagMasks[flag]) >> this.flagShift[flag]
+    return (this.reg8[this.regOffsets8.F] & this.flagBits[flag]) >> this.flagShift[flag]
+  }
+
+  setFlag(flag, value) {
+    const bit = value? 1 : 0 << this.flagShift[flag]
+    this.reg8[this.regOffsets8.F] = (this.reg8[this.regOffsets8.F] & this.flagMasks[flag]) | bit
+  }
+
+  disasm(opcode, address) {
+    return opcode.name.
+      replace(/\\1/, ("00" + this.mmu.readByte(address + 1).toString(16).toUpperCase()).substr(-2)).
+      replace(/\\2/, ("00" + this.mmu.readByte(address + 2).toString(16).toUpperCase()).substr(-2))
+  }
+
+  disasmNextOpCode() {
+    const opcode = this.mmu.readByte(this.reg16[this.regOffsets16.PC])
+    try {
+      return this.disasm(this.instructions[opcode], this.reg16[this.regOffsets16.PC])
+    } catch(e) {
+      return "NOP"
+    }
   }
 
   stepExecution() {

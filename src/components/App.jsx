@@ -75,6 +75,7 @@ class App extends React.Component {
       display: 'flex',
       flexDirection: 'column'
     }
+    const nextMnemonic = this.props.z80.disasmNextOpCode()
     return (
       <div style={panelStyle}>
         <div style={columnStyle}>
@@ -88,6 +89,9 @@ class App extends React.Component {
         </div>
         <div style={columnStyle}>
           <p>Disassembly</p>
+          <div id="disasm">
+            {nextMnemonic}
+          </div>
         </div>
       </div>
     )
