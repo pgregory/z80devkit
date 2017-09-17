@@ -829,14 +829,14 @@ export default class Z80 {
       "***P0-": (a,b,r) => {},
       "***P00": (a,b,r) => {},
       "***V0*": (a,b,r) => {
-        const flags = (((r & 0x80)? 1 : 0) << this.flagShift.S) | 
-                      ((!(r & 0xFF)? 1 : 0) << this.flagShift.Z) |
-                      (((r & 0x20)? 1 : 0) << this.flagShift.Y) |
-                      (((((a & 0xF) + (b & 0xF)) & 0x10)? 1 : 0) << this.flagShift.H) |
-                      (((r & 0x08)? 1 : 0) << this.flagShift.X) |
-                      ((((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80))? 1 : 0) << this.flagShift.P) |
-                      (((r > 255)? 1 : 0) << this.flagShift.C)
-        this.reg8[this.regOffsets8.F] = flags
+        this.flags.S = ((r & 0x80) !== 0)
+        this.flags.Z = !(r & 0xFF)
+        this.flags.Y = ((r & 0x20) !== 0)
+        this.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
+        this.flags.X = ((r & 0x08) !== 0)
+        this.flags.P = (((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80)))
+        this.flags.N = false
+        this.flags.C = (r > 255)
       },
       "***V0-": (a,b,r) => {},
       "***V1*": (a,b,r) => {},
@@ -936,6 +936,17 @@ export default class Z80 {
       C: 0,
     }
 
+    this.flags = {
+      S: true,
+      Z: true,
+      Y: true,
+      H: true,
+      X: true,
+      P: true,
+      N: true,
+      C: true,
+    }
+
     this.reset()
   }
 
@@ -946,6 +957,14 @@ export default class Z80 {
     this.reg16[this.regOffsets16.HL] = 0xFFFF
     this.reg16[this.regOffsets16.SP] = 0
     this.reg16[this.regOffsets16.PC] = 0
+    this.flags.S = true
+    this.flags.Z = true
+    this.flags.Y = true
+    this.flags.H = true
+    this.flags.X = true
+    this.flags.P = true
+    this.flags.N = true
+    this.flags.C = true
   }
 
   getRegister8(reg) {
@@ -954,15 +973,6 @@ export default class Z80 {
 
   getRegister16(reg) {
     return this.reg16[this.regOffsets16[reg]]
-  }
-
-  getFlag(flag) {
-    return (this.reg8[this.regOffsets8.F] & this.flagBits[flag]) >> this.flagShift[flag]
-  }
-
-  setFlag(flag, value) {
-    const bit = value? 1 : 0 << this.flagShift[flag]
-    this.reg8[this.regOffsets8.F] = (this.reg8[this.regOffsets8.F] & this.flagMasks[flag]) | bit
   }
 
   disasm(opcode, address) {

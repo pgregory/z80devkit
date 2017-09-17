@@ -10,14 +10,14 @@ class Flags extends React.Component {
               <th>S</th><th>Z</th><th>Y</th><th>H</th><th>X</th><th>P</th><th>N</th><th>C</th>
             </tr>
             <tr>
-              <th>{this.props.flags.S}</th>
-              <th>{this.props.flags.Z}</th>
-              <th>{this.props.flags.Y}</th>
-              <th>{this.props.flags.H}</th>
-              <th>{this.props.flags.X}</th>
-              <th>{this.props.flags.P}</th>
-              <th>{this.props.flags.N}</th>
-              <th>{this.props.flags.C}</th>
+              <td>{this.props.flags.S? 1 : 0}</td>
+              <td>{this.props.flags.Z? 1 : 0}</td>
+              <td>{this.props.flags.Y? 1 : 0}</td>
+              <td>{this.props.flags.H? 1 : 0}</td>
+              <td>{this.props.flags.X? 1 : 0}</td>
+              <td>{this.props.flags.P? 1 : 0}</td>
+              <td>{this.props.flags.N? 1 : 0}</td>
+              <td>{this.props.flags.C? 1 : 0}</td>
             </tr>
           </tbody>
         </table>

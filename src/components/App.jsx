@@ -10,7 +10,7 @@ class App extends React.Component {
 
     this.state = {
       registers: this.getRegisters(),
-      flags: this.getFlags(),
+      flags: this.props.z80.flags,
       z80: this.props.z80,
     }
 
@@ -42,24 +42,11 @@ class App extends React.Component {
     }
   }
 
-  getFlags() {
-    return {
-      S: this.props.z80.getFlag("S"),
-      Z: this.props.z80.getFlag("Z"),
-      Y: this.props.z80.getFlag("Y"),
-      H: this.props.z80.getFlag("H"),
-      X: this.props.z80.getFlag("X"),
-      P: this.props.z80.getFlag("P"),
-      N: this.props.z80.getFlag("N"),
-      C: this.props.z80.getFlag("C"),
-    }
-  }
-
   handleClick(e) {
     this.props.z80.stepExecution()
     this.setState(prevState => ({
       registers: update(prevState.registers, {$set: this.getRegisters()}),
-      flags: update(prevState.flags, {$set: this.getFlags()}),
+      flags: update(prevState.flags, {$set: this.props.z80.flags}),
     }))
   }
 
