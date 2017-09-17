@@ -3,6 +3,7 @@ import update from 'immutability-helper'
 
 import Registers from './Registers.jsx'
 import Flags from './Flags.jsx'
+import Disassembly from './Disassembly.jsx'
 
 class App extends React.Component {
   constructor(props) {
@@ -20,19 +21,13 @@ class App extends React.Component {
   getRegisters() {
     return {
       A: this.props.z80.getRegister8("A"), 
-      B: this.props.z80.getRegister8("B"), 
-      C: this.props.z80.getRegister8("C"), 
-      D: this.props.z80.getRegister8("D"), 
-      E: this.props.z80.getRegister8("E"), 
-      H: this.props.z80.getRegister8("H"), 
-      L: this.props.z80.getRegister8("L"), 
+      BC: this.props.z80.getRegister16("BC"), 
+      DE: this.props.z80.getRegister16("DE"), 
+      HL: this.props.z80.getRegister16("HL"), 
       A_: this.props.z80.getRegister8("A_"), 
-      B_: this.props.z80.getRegister8("B_"), 
-      C_: this.props.z80.getRegister8("C_"), 
-      D_: this.props.z80.getRegister8("D_"), 
-      E_: this.props.z80.getRegister8("E_"), 
-      H_: this.props.z80.getRegister8("H_"), 
-      L_: this.props.z80.getRegister8("L_"), 
+      BC_: this.props.z80.getRegister16("BC_"), 
+      DE_: this.props.z80.getRegister16("DE_"), 
+      HL_: this.props.z80.getRegister16("HL_"), 
       IX: this.props.z80.getRegister16("IX"), 
       IY: this.props.z80.getRegister16("IY"), 
       I: this.props.z80.getRegister8("I"), 
@@ -62,7 +57,6 @@ class App extends React.Component {
       display: 'flex',
       flexDirection: 'column'
     }
-    const nextMnemonic = this.props.z80.disasmNextOpCode()
     return (
       <div style={panelStyle}>
         <div style={columnStyle}>
@@ -75,10 +69,7 @@ class App extends React.Component {
           <button onClick={this.handleClick}>Step</button>
         </div>
         <div style={columnStyle}>
-          <p>Disassembly</p>
-          <div id="disasm">
-            {nextMnemonic}
-          </div>
+          <Disassembly z80={this.state.z80}/>
         </div>
       </div>
     )

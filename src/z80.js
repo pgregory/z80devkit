@@ -981,13 +981,22 @@ export default class Z80 {
       replace(/\\2/, ("00" + this.mmu.readByte(address + 2).toString(16).toUpperCase()).substr(-2))
   }
 
-  disasmNextOpCode() {
-    const opcode = this.mmu.readByte(this.reg16[this.regOffsets16.PC])
+  disasmOpCodeAt(address) {
+    const opcode = this.mmu.readByte(address)
     try {
-      return this.disasm(this.instructions[opcode], this.reg16[this.regOffsets16.PC])
+      return this.disasm(this.instructions[opcode], address)
     } catch(e) {
       return "NOP"
     }
+  }
+
+  disasmNextOpCode() {
+    return this.disasmOpCodeAt(this.reg16[this.regOffsets16.PC])
+  }
+
+  nextOpCodeAddress(address) {
+    const opcode = this.mmu.readByte(this.reg16[this.regOffsets16.PC])
+    return address + this.instructions[opcode].length
   }
 
   stepExecution() {
