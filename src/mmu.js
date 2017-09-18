@@ -8,6 +8,12 @@ export default class MMU {
     return this.memory[address]
   }
 
+  readWord(address) {
+    const l = this.memory[address]
+    const h = this.memory[address + 1]
+    return (h << 8) | l
+  }
+
   writeByte(address, value) {
     this.memory[address] = value 
   }

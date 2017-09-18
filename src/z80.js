@@ -1,3 +1,5 @@
+import {hexByte} from './utilities.js'
+
 export default class Z80 {
   constructor(mmu) {
     this.mmu = mmu
@@ -247,7 +249,19 @@ export default class Z80 {
       /* CF */ { name: "RST 08H", exec: () => {}, length: 1 },
       /* D0 */ { name: "RET NC", exec: () => {}, length: 1 },
       /* D1 */ { name: "POP DE", exec: () => {}, length: 1 },
-      /* D2 */ { name: "JP NC,\\1\\2H", exec: () => {}, length: 3 },
+      /* D2 */ {
+        name: "JP NC,\\1\\2H",
+        exec: () => {
+          const addr = z80.mmu.readWord(z80.reg16[z80.regOffsets16.PC] + 1)
+          if(!z80.flags.C) {
+            z80.reg16[z80.regOffsets16.PC] = addr
+          } else {
+            z80.reg16[z80.regOffsets16.PC] += 3
+          }
+          return true
+        },
+        length: 3
+      },
       /* D3 */ { name: "OUT (\\1H),A", exec: () => {}, length: 2 },
       /* D4 */ { name: "CALL NC,\\1\\2H", exec: () => {}, length: 3 },
       /* D5 */ { name: "PUSH DE", exec: () => {}, length: 1 },
@@ -975,6 +989,15 @@ export default class Z80 {
     return this.reg16[this.regOffsets16[reg]]
   }
 
+  hexOpCodeAt(address) {
+    const opcode = this.mmu.readByte(address)
+    let hex = hexByte(opcode)
+    for(let b = 1; b < this.instructions[opcode].length; b += 1 ) {
+      hex += hexByte(this.mmu.readByte(address + b))
+    }
+    return (hex + "        ").substr(0, 8)
+  }
+
   disasm(opcode, address) {
     return opcode.name.
       replace(/\\1/, ("00" + this.mmu.readByte(address + 1).toString(16).toUpperCase()).substr(-2)).
@@ -994,14 +1017,15 @@ export default class Z80 {
     return this.disasmOpCodeAt(this.reg16[this.regOffsets16.PC])
   }
 
-  nextOpCodeAddress(address) {
-    const opcode = this.mmu.readByte(this.reg16[this.regOffsets16.PC])
-    return address + this.instructions[opcode].length
+  opcodeLengthAt(address) {
+    const opcode = this.mmu.readByte(address)
+    return this.instructions[opcode].length
   }
 
   stepExecution() {
     const opcode = this.mmu.readByte(this.reg16[this.regOffsets16.PC])
-    this.instructions[opcode].exec()
-    this.reg16[this.regOffsets16.PC] += this.instructions[opcode].length
+    if(!this.instructions[opcode].exec()) {
+      this.reg16[this.regOffsets16.PC] += this.instructions[opcode].length
+    }
   }
 }

@@ -8,14 +8,14 @@ class Disassembly extends React.Component {
       fontSize: 12
     }
     const code = []
-    let address = this.props.z80.getRegister16("PC")
+    let address = this.props.address
     for(let r = 0; r < 20; r += 1) {
-      code.push(hexWord(address) + ": " + this.props.z80.disasmOpCodeAt(address))
-      address = this.props.z80.nextOpCodeAddress(address)
+      code.push(((address === this.props.z80.getRegister16("PC"))? ">" : " ") + hexWord(address) + ": " + this.props.z80.hexOpCodeAt(address) + " " + this.props.z80.disasmOpCodeAt(address))
+      address += this.props.z80.opcodeLengthAt(address)
     }
     return (
       <div>
-        <textarea style={textStyle} rows={20} cols={16}
+        <textarea style={textStyle} rows={20} cols={32}
           readOnly={true}
           value={code.join("\n")}/>
       </div>
