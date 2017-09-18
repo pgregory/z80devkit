@@ -1,5 +1,27 @@
 import {hexByte} from './utilities.js'
 
+// Macros for common flag update modes
+DEFINE_MACRO(FLAGS_MMMV0M, (z80, a, b, r) => {
+  z80.flags.S = ((r & 0x80) !== 0)
+  z80.flags.Z = !(r & 0xFF)
+  z80.flags.Y = ((r & 0x20) !== 0)
+  z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
+  z80.flags.X = ((r & 0x08) !== 0)
+  z80.flags.P = (((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80)))
+  z80.flags.N = false
+  z80.flags.C = (r > 255)
+})
+
+DEFINE_MACRO(JP_CC_NNNN, (z80, cond) => {
+  const addr = z80.mmu.readWord(z80.reg16[z80.regOffsets16.PC] + 1)
+  if(cond) {
+    z80.reg16[z80.regOffsets16.PC] = addr
+  } else {
+    z80.reg16[z80.regOffsets16.PC] += 3
+  }
+  return true
+})
+
 export default class Z80 {
   constructor(mmu) {
     this.mmu = mmu
@@ -164,7 +186,7 @@ export default class Z80 {
           const b = z80.reg8[z80.regOffsets8.B]
           const res = a + b
           z80.reg8[z80.regOffsets8.A] = res
-          z80.updateFlags["***V0*"](a, b, res)
+          FLAGS_MMMV0M(z80, a, b, res)
         },
         length: 1,
       },
@@ -250,15 +272,9 @@ export default class Z80 {
       /* D0 */ { name: "RET NC", exec: () => {}, length: 1 },
       /* D1 */ { name: "POP DE", exec: () => {}, length: 1 },
       /* D2 */ {
-        name: "JP NC,\\1\\2H",
+        name: "JP NC,\\2\\1H",
         exec: () => {
-          const addr = z80.mmu.readWord(z80.reg16[z80.regOffsets16.PC] + 1)
-          if(!z80.flags.C) {
-            z80.reg16[z80.regOffsets16.PC] = addr
-          } else {
-            z80.reg16[z80.regOffsets16.PC] += 3
-          }
-          return true
+          return JP_CC_NNNN(z80, !z80.flags.C)
         },
         length: 3
       },
@@ -269,7 +285,13 @@ export default class Z80 {
       /* D7 */ { name: "RST 10H", exec: () => {}, length: 1 },
       /* D8 */ { name: "RET C", exec: () => {}, length: 1 },
       /* D9 */ { name: "EXX", exec: () => {}, length: 1 },
-      /* DA */ { name: "JP C,\\1\\2H", exec: () => {}, length: 3 },
+      /* DA */ {
+        name: "JP C,\\2\\1H",
+        exec: () => {
+          return JP_CC_NNNN(z80, z80.flags.C)
+        },
+        length: 3
+      },
       /* DB */ { name: "IN A,(\\1H)", exec: () => {}, length: 2 },
       /* DC */ { name: "CALL C,\\1\\2H", exec: () => {}, length: 3 },
       /* DD */ { name: "**** DD ****", exec: () => {}, length: 1 },
@@ -827,48 +849,6 @@ export default class Z80 {
       /* FF */ { name: "", exec: () => {}, length: 2 },
     ]
 
-    // Set of functions to update flags based on and encoded description
-    // of the flags affected by the last instruction.
-    // - = unaffected
-    // * = affected as per normal rules
-    // 0 = reset
-    // 1 = set
-    // V = Overflow
-    // P = Parity
-    this.updateFlags = {
-      "******": (a,b,r) => {},
-      "****1-": (a,b,r) => {},
-      "***?1-": (a,b,r) => {},
-      "***P-*": (a,b,r) => {},
-      "***P0-": (a,b,r) => {},
-      "***P00": (a,b,r) => {},
-      "***V0*": (a,b,r) => {
-        this.flags.S = ((r & 0x80) !== 0)
-        this.flags.Z = !(r & 0xFF)
-        this.flags.Y = ((r & 0x20) !== 0)
-        this.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
-        this.flags.X = ((r & 0x08) !== 0)
-        this.flags.P = (((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80)))
-        this.flags.N = false
-        this.flags.C = (r > 255)
-      },
-      "***V0-": (a,b,r) => {},
-      "***V1*": (a,b,r) => {},
-      "***V1-": (a,b,r) => {},
-      "**0*0-": (a,b,r) => {},
-      "**0P0*": (a,b,r) => {},
-      "**0P0-": (a,b,r) => {},
-      "**1*0-": (a,b,r) => {},
-      "--*-0*": (a,b,r) => {},
-      "------": (a,b,r) => {},
-      "--0*0-": (a,b,r) => {},
-      "--0-0*": (a,b,r) => {},
-      "--0-01": (a,b,r) => {},
-      "--000-": (a,b,r) => {},
-      "--1-1-": (a,b,r) => {},
-      "01*?1-": (a,b,r) => {},
-    }
-
     this.registers = new ArrayBuffer(26)
     this.reg16 = new Uint16Array(this.registers)
     this.reg8 = new Uint8Array(this.registers)
@@ -917,39 +897,6 @@ export default class Z80 {
       R: 20,
     }
 
-    this.flagBits = {
-      S: 0x80,
-      Z: 0x40,
-      Y: 0x20,
-      H: 0x10,
-      X: 0x08,
-      P: 0x04,
-      N: 0x02,
-      C: 0x01,
-    }
-
-    this.flagMasks = {
-      S: 0x7F,
-      Z: 0xBF,
-      Y: 0xDF,
-      H: 0xEF,
-      X: 0xF7,
-      P: 0xFB,
-      N: 0xFD,
-      C: 0xFE,
-    }
-
-    this.flagShift = {
-      S: 7,
-      Z: 6,
-      Y: 5,
-      H: 4,
-      X: 3,
-      P: 2,
-      N: 1,
-      C: 0,
-    }
-
     this.flags = {
       S: true,
       Z: true,
@@ -969,7 +916,7 @@ export default class Z80 {
     this.reg16[this.regOffsets16.BC] = 0xFFFF
     this.reg16[this.regOffsets16.DE] = 0xFFFF
     this.reg16[this.regOffsets16.HL] = 0xFFFF
-    this.reg16[this.regOffsets16.SP] = 0
+    this.reg16[this.regOffsets16.SP] = 0xFFFF 
     this.reg16[this.regOffsets16.PC] = 0
     this.flags.S = true
     this.flags.Z = true
