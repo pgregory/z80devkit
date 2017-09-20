@@ -3,9 +3,13 @@ import {hexByte, hexWord} from '../utilities.js'
 
 class Registers extends React.Component {
   render() {
+    const textStyle = {
+      fontFamily: "monospace",
+      fontSize: 14
+    }
     return (
       <div>
-        <table>
+        <table style={textStyle}>
           <tbody>
             <tr>
               <th>A:</th><td>{hexByte(this.props.registers.A)}</td>
