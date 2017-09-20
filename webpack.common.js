@@ -34,21 +34,27 @@ module.exports = {
         test: /\.css$/,
         use: [
           'style-loader',
-          'css-loader'
-        ]
+          'css-loader',
+        ],
       },
       {
         test: /\.(png|svg|jpg|gif)$/,
         use: [
-          'file-loader'
-        ]
+          'file-loader',
+        ],
       },
       {
         test: /\.(woff|wof2|eot|ttf|otf)$/,
         use: [
-          'file-loader'
-        ]
-      }
+          'file-loader',
+        ],
+      },
+      {
+        test: /\.(bin|dat)$/,
+        use: [ 
+          'arraybuffer-loader',
+        ],
+      },
     ]
   }
 };

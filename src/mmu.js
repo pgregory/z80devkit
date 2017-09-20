@@ -1,6 +1,6 @@
 export default class MMU {
   constructor() {
-    this.memoryBuffer = new ArrayBuffer(16384)
+    this.memoryBuffer = new ArrayBuffer(65536)
     this.memory = new Uint8Array(this.memoryBuffer)
   }
 
@@ -16,5 +16,9 @@ export default class MMU {
 
   writeByte(address, value) {
     this.memory[address] = value 
+  }
+
+  copyFrom(source, offset) {
+    this.memory.set(source, offset)
   }
 }

@@ -69,7 +69,7 @@ class App extends React.Component {
           <button onClick={this.handleClick}>Step</button>
         </div>
         <div style={columnStyle}>
-          <Disassembly address={0} z80={this.state.z80}/>
+          <Disassembly address={this.state.registers.PC} z80={this.state.z80}/>
         </div>
       </div>
     )

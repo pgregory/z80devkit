@@ -12,6 +12,7 @@
   "author": "Paul Gregory <pgregory@indigobeetle.co.uk>",
   "license": "MIT",
   "devDependencies": {
+    "arraybuffer-loader": "^0.2.2",
     "babel-core": "^6.26.0",
     "babel-loader": "^7.1.2",
     "babel-plugin-macros": "^1.0.15",
