@@ -22,6 +22,34 @@ DEFINE_MACRO(JP_CC_NNNN, (z80, cond, length) => {
   return true
 })
 
+DEFINE_MACRO(LD_RR_NNNN, (z80, r) => {
+  const nl = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
+  const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
+  // TODO: Is this construction right?
+  z80.reg16[r] = (nh << 8) + nl
+})
+
+DEFINE_MACRO(LD_RR_FROM_NNNN, (z80, r) => {
+  // Read address from opcode
+  const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
+  const nl = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
+  const addr = nh << 8 + nl
+  // Read data from address
+  const rh = z80.mmu.readByte(addr)
+  const rl = z80.mmu.readByte(addr + 1)
+  // TODO: Is this construction right?
+  z80.reg16[r] = (rh << 8) + rl
+})
+
+DEFINE_MACRO(LD_R_NN, (z80, r) => {
+  const n = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+  z80.reg8[r] = n
+})
+
+DEFINE_MACRO(LD_RR_RR, (z80, r, r2) => {
+  z80.reg16[r] = z80.reg16[r2]
+})
+
 export default class Z80 {
   constructor(mmu) {
     this.mmu = mmu
@@ -32,10 +60,7 @@ export default class Z80 {
       /* 01 */ { 
         name: "LD BC,\\2\\1H", 
         exec() {
-          const n1 = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
-          const n2 = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
-          // TODO: Is this construction right?
-          z80.reg16[z80.regOffsets16.BC] = n1 << 8 + n2
+          LD_RR_NNNN(z80, z80.regOffsets16.BC)
         }, 
         length: 3 
       },
@@ -58,10 +83,22 @@ export default class Z80 {
       /* 0B */ { name: "DEC BC", exec() {}, length: 1 },
       /* 0C */ { name: "INC C", exec() {}, length: 1 },
       /* 0D */ { name: "DEC C", exec() {}, length: 1 },
-      /* 0E */ { name: "LD C,\\1H", exec() {}, length: 2 },
+      /* 0E */ {
+        name: "LD C,\\1H",
+        exec() {
+          LD_R_NN(z80, z80.regOffsets8.C)
+        },
+        length: 2
+      },
       /* 0F */ { name: "RRCA", exec() {}, length: 1 },
       /* 10 */ { name: "DJNZ e", exec() {}, length: 2 },
-      /* 11 */ { name: "LD DE,\\2\\1H", exec() {}, length: 3 },
+      /* 11 */ {
+        name: "LD DE,\\2\\1H",
+        exec() {
+          LD_RR_NNNN(z80, z80.regOffsets16.DE)
+        },
+        length: 3
+      },
       /* 12 */ { name: "LD (DE),A", exec() {}, length: 1 },
       /* 13 */ { name: "INC DE", exec() {}, length: 1 },
       /* 14 */ { name: "INC D", exec() {}, length: 1 },
@@ -86,7 +123,13 @@ export default class Z80 {
       /* 27 */ { name: "DAA", exec() {}, length: 1 },
       /* 28 */ { name: "JR Z,\\1H", exec() {}, length: 2 },
       /* 29 */ { name: "ADD HL,HL", exec() {}, length: 1 },
-      /* 2A */ { name: "LD HL,(\\2\\1H)", exec() {}, length: 3 },
+      /* 2A */ {
+        name: "LD HL,(\\2\\1H)",
+        exec() {
+          LD_RR_FROM_NNNN(z80, z80.regOffsets16.HL)
+        },
+        length: 3
+      },
       /* 2B */ { name: "DEC HL", exec() {}, length: 1 },
       /* 2C */ { name: "INC L", exec() {}, length: 1 },
       /* 2D */ { name: "DEC L", exec() {}, length: 1 },
@@ -256,7 +299,15 @@ export default class Z80 {
       /* C0 */ { name: "RET NZ", exec() {}, length: 1 },
       /* C1 */ { name: "POP BC", exec() {}, length: 1 },
       /* C2 */ { name: "JP NZ,\\2\\1H", exec() {}, length: 3 },
-      /* C3 */ { name: "JP \\2\\1H", exec() {}, length: 3 },
+      /* C3 */ {
+        name: "JP \\2\\1H",
+        exec() {
+          const addr = z80.mmu.readWord(z80.reg16[z80.regOffsets16.PC] + 1)
+          z80.reg16[z80.regOffsets16.PC] = addr
+          return true
+        },
+        length: 3
+      },
       /* C4 */ { name: "CALL NZ,\\2\\1H", exec() {}, length: 3 },
       /* C5 */ { name: "PUSH BC", exec() {}, length: 1 },
       /* C6 */ { name: "ADD A,\\1H", exec() {}, length: 2 },
@@ -322,7 +373,13 @@ export default class Z80 {
       /* F6 */ { name: "OR \\1H", exec() {}, length: 2 },
       /* F7 */ { name: "RST 30H", exec() {}, length: 1 },
       /* F8 */ { name: "RET M", exec() {}, length: 1 },
-      /* F9 */ { name: "LD SP,HL", exec() {}, length: 1 },
+      /* F9 */ {
+        name: "LD SP,HL",
+        exec() {
+          LD_RR_RR(z80, z80.regOffsets16.SP, z80.regOffsets16.HL)
+        },
+        length: 1
+      },
       /* FA */ { name: "JP M,\\2\\1H", exec() {}, length: 3 },
       /* FB */ { name: "EI", exec() {}, length: 1 },
       /* FC */ { name: "CALL M,\\2\\1H", exec() {}, length: 3 },
