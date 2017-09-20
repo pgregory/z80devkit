@@ -15,14 +15,14 @@ const z80 = new Z80(mmu)
 const code = new Uint8Array(zexall)
 mmu.copyFrom(code, 0x100)
 
-/*mmu.writeByte(0, 0x06)
-mmu.writeByte(1, 0x47)
-mmu.writeByte(2, 0x3E)
-mmu.writeByte(3, 0xFF)
-mmu.writeByte(4, 0x80)
-mmu.writeByte(5, 0xDA)
-mmu.writeByte(6, 0x04)
-mmu.writeByte(7, 0x00)*/
+/*mmu.writeByte(0x100, 0x06)
+mmu.writeByte(0x101, 0x47)
+mmu.writeByte(0x102, 0x3E)
+mmu.writeByte(0x103, 0xFF)
+mmu.writeByte(0x104, 0x80)
+mmu.writeByte(0x105, 0xDA)
+mmu.writeByte(0x106, 0x04)
+mmu.writeByte(0x107, 0x00)*/
 
 z80.setRegister16("PC", 0x100)
 
