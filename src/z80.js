@@ -409,8 +409,14 @@ export default class Z80 {
       /* 17 */ {
 				name: "RLA",
 				exec() {
+          let a = z80.reg8[z80.regOffsets8.A]
+          let C = (a & 0x80)? true : false
+          a = (a << 1) | ((z80.flags.C)? 0x01 : 0x00)
+          z80.reg8[z80.regOffsets8.A] = a
+          z80.flags.C = C
+          z80.flags.H = false
+          z80.flags.N = false
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 18 */ {
