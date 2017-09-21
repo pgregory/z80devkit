@@ -12,6 +12,7 @@ class App extends React.Component {
     this.state = {
       registers: this.getRegisters(),
       flags: this.props.z80.flags,
+      altFlags: this.props.z80.altFlags,
       z80: this.props.z80,
     }
 
@@ -64,7 +65,7 @@ class App extends React.Component {
             <Registers registers = {this.state.registers} z80 = {this.state.z80}/>
           </div>
           <div style={regStyle}>
-            <Flags flags = {this.state.flags}/>
+            <Flags flags={this.state.flags} altFlags={this.state.altFlags}/>
           </div>
           <button onClick={this.handleClick}>Step</button>
         </div>
