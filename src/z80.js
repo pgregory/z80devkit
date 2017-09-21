@@ -1,79 +1,78 @@
 import {hexByte} from './utilities.js'
 
 // Macros for common flag update modes
+
+DEFINE_MACRO(FLAGS_XY_A, (z80, a) => {
+  z80.flags.Y = ((a & 0x20) !== 0)
+  z80.flags.X = ((a & 0x08) !== 0)
+})
+
 DEFINE_MACRO(FLAGS_MMMV0M, (z80, a, b, r) => {
   z80.flags.S = ((r & 0x80) !== 0)
   z80.flags.Z = !(r & 0xFF)
-  z80.flags.Y = ((r & 0x20) !== 0)
   z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
-  z80.flags.X = ((r & 0x08) !== 0)
   z80.flags.P = (((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80)))
   z80.flags.N = false
   z80.flags.C = (r > 255)
+  FLAGS_XY_A(z80, r)
 })
 
 DEFINE_MACRO(FLAGS_MMMV0N, (z80, a, b, r) => {
   z80.flags.S = ((r & 0x80) !== 0)
   z80.flags.Z = !(r & 0xFF)
-  z80.flags.Y = ((r & 0x20) !== 0)
   z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
-  z80.flags.X = ((r & 0x08) !== 0)
   z80.flags.P = (((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80)))
   z80.flags.N = false
+  FLAGS_XY_A(z80, r)
 })
 
 DEFINE_MACRO(FLAGS_MMMV1M, (z80, a, b, r) => {
   z80.flags.S = ((r & 0x80) !== 0)
   z80.flags.Z = !(r & 0xFF)
-  z80.flags.Y = ((r & 0x20) !== 0)
   z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
-  z80.flags.X = ((r & 0x08) !== 0)
   z80.flags.P = (((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80)))
   z80.flags.N = true
   z80.flags.C = (r > 255)
+  FLAGS_XY_A(z80, r)
 })
 
 DEFINE_MACRO(FLAGS_MMMV1N, (z80, a, b, r) => {
   z80.flags.S = ((r & 0x80) !== 0)
   z80.flags.Z = !(r & 0xFF)
-  z80.flags.Y = ((r & 0x20) !== 0)
   z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
-  z80.flags.X = ((r & 0x08) !== 0)
   z80.flags.P = (((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80)))
   z80.flags.N = true
+  FLAGS_XY_A(z80, r)
 })
 
 DEFINE_MACRO(FLAGS_MMMP00, (z80, a, b, r) => {
   z80.flags.S = ((r & 0x80) !== 0)
   z80.flags.Z = !(r & 0xFF)
-  z80.flags.Y = ((r & 0x20) !== 0)
   z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
-  z80.flags.X = ((r & 0x08) !== 0)
   z80.flags.P = z80.getParity(r)
   z80.flags.N = false
   z80.flags.C = false
+  FLAGS_XY_A(z80, r)
 })
 
 DEFINE_MACRO(FLAGS_NN0N0M, (z80, a, b, r) => {
   //z80.flags.S = 
   //z80.flags.Z = 
-  z80.flags.Y = ((r & 0x20) !== 0)
   z80.flags.H = false
-  z80.flags.X = ((r & 0x08) !== 0)
   //z80.flags.P = 
   z80.flags.N = false
   z80.flags.C = (r > 255)
+  FLAGS_XY_A(z80, r)
 })
 
 DEFINE_MACRO(FLAGS_NNMN0M, (z80, a, b, r) => {
   //z80.flags.S = 
   //z80.flags.Z = 
-  z80.flags.Y = ((r & 0x20) !== 0)
   z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
-  z80.flags.X = ((r & 0x08) !== 0)
   //z80.flags.P = 
   z80.flags.N = false
   z80.flags.C = (r > 255)
+  FLAGS_XY_A(z80, r)
 })
 
 DEFINE_MACRO(JP_CC_NNNN, (z80, cond, length) => {
@@ -95,14 +94,34 @@ DEFINE_MACRO(LD_RR_NNNN, (z80, r) => {
 
 DEFINE_MACRO(LD_RR_FROM_NNNN, (z80, r) => {
   // Read address from opcode
-  const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
-  const nl = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
+  const nl = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
+  const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
   const addr = nh << 8 + nl
   // Read data from address
   const rh = z80.mmu.readByte(addr)
   const rl = z80.mmu.readByte(addr + 1)
   // TODO: Is this construction right?
   z80.reg16[r] = (rh << 8) + rl
+})
+
+DEFINE_MACRO(LD_TO_NNNN_R, (z80, r) => {
+  // Read address from opcode
+  const nl = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
+  const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
+  const addr = nh << 8 + nl
+  const value = z80.reg8[r]
+  z80.mmu.writeByte(addr, value & 0xFF)
+})
+
+DEFINE_MACRO(LD_TO_NNNN_RR, (z80, r) => {
+  // Read address from opcode
+  const nl = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
+  const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
+  let addr = nh << 8 + nl
+  const value = z80.reg16[r]
+  z80.mmu.writeByte(addr, value & 0xFF)
+  addr = (addr + 1) & 0xFFFF
+  z80.mmu.writeByte(addr, value >> 8)
 })
 
 DEFINE_MACRO(LD_R_NN, (z80, r) => {
@@ -216,6 +235,21 @@ DEFINE_MACRO(DEC_R, (z80, r) => {
 DEFINE_MACRO(LD_R_FROM_RR, (z80, r, r2) => {
   const addr = z80.reg16[r2]
   z80.reg8[r] = z80.mmu.getByte(addr) 
+})
+
+DEFINE_MACRO(INC_AT_RR, (z80, r) => {
+  const addr = z80.reg16[r]
+  const a = z80.mmu.readByte(addr)
+  const res = a + 1
+  z80.mmu.writeByte(addr, res)
+  FLAGS_MMMV0N(z80, a, a, res)
+})
+
+DEFINE_MACRO(CP_R, (z80, r) => {
+  const a = z80.reg8[z80.regOffsets8.A]
+  const b = z80.reg8[r]
+  z80.reg8[z80.regOffsets8.A] = b
+  FLAGS_MMMV1M(z80, a, b, b)
 })
 
 export default class Z80 {
@@ -420,10 +454,15 @@ export default class Z80 {
 				length: 1
 			 },
       /* 18 */ {
-				name: "JR e",
+				name: "JR \\1H",
 				exec() {
+          const offset = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          let pc = z80.reg16[z80.regOffsets16.PC]
+          pc += this.length
+          pc += (offset & 0x80)? offset - 0x100 : offset
+          z80.reg16[z80.regOffsets16.PC] = pc
+          return true
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 19 */ {
@@ -434,10 +473,10 @@ export default class Z80 {
 				length: 1
 			 },
       /* 1A */ {
-				name: "LA A,(DE)",
+				name: "LD A,(DE)",
 				exec() {
+          LD_R_FROM_RR(z80, z80.regOffsets8.A, z80.regOffsets16.DE)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 1B */ {
@@ -471,15 +510,28 @@ export default class Z80 {
       /* 1F */ {
 				name: "RRA",
 				exec() {
+          let a = z80.reg8[z80.regOffsets8.A]
+          let C = (a & 0x01)? true : false
+          a = (a >> 1) | ((z80.flags.C)? 0x80 : 0x00)
+          z80.reg8[z80.regOffsets8.A] = a
+          z80.flags.C = C
+          z80.flags.H = false
+          z80.flags.N = false
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 20 */ {
-				name: "JR NZ,e",
+				name: "JR NZ,\\1H",
 				exec() {
+          if(!z80.flags.Z) {
+            const offset = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+            let pc = z80.reg16[z80.regOffsets16.PC]
+            pc += this.length
+            pc += (offset & 0x80)? offset - 0x100 : offset
+            z80.reg16[z80.regOffsets16.PC] = pc
+            return true
+          }
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 21 */ {
@@ -492,8 +544,8 @@ export default class Z80 {
       /* 22 */ {
 				name: "LD (\\2\\1H),HL",
 				exec() {
+          LD_TO_NNNN_RR(z80, z80.regOffsets16.HL)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* 23 */ {
@@ -534,8 +586,15 @@ export default class Z80 {
       /* 28 */ {
 				name: "JR Z,\\1H",
 				exec() {
+          if(z80.flags.Z) {
+            const offset = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+            let pc = z80.reg16[z80.regOffsets16.PC]
+            pc += this.length
+            pc += (offset & 0x80)? offset - 0x100 : offset
+            z80.reg16[z80.regOffsets16.PC] = pc
+            return true
+          }
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 29 */ {
@@ -583,15 +642,25 @@ export default class Z80 {
       /* 2F */ {
 				name: "CPL",
 				exec() {
+          z80.reg8[z80.regOffsets8.A] ^= 0xFF
+          z80.flags.N = true
+          z80.flags.H = true
+          FLAGS_XY_A(z80, z80.reg8[z80.regOffsets8.A])
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 30 */ {
-				name: "JR NC,(PC+e)",
+				name: "JR NC,\\1H",
 				exec() {
+          if(!z80.flags.C) {
+            const offset = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+            let pc = z80.reg16[z80.regOffsets16.PC]
+            pc += this.length
+            pc += (offset & 0x80)? offset - 0x100 : offset
+            z80.reg16[z80.regOffsets16.PC] = pc
+            return true
+          }
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 31 */ {
@@ -604,8 +673,8 @@ export default class Z80 {
       /* 32 */ {
 				name: "LD (\\2\\1H),A",
 				exec() {
+          LD_TO_NNNN_R(z80, z80.regOffsets16.A)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* 33 */ {
@@ -618,36 +687,55 @@ export default class Z80 {
       /* 34 */ {
 				name: "INC (HL)",
 				exec() {
+          const addr = z80.reg16[z80.regOffsets16.HL]
+          const a = z80.mmu.readByte(addr)
+          const res = a + 1
+          z80.mmu.writeByte(addr, res)
+          FLAGS_MMMV0N(z80, a, a, res)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 35 */ {
 				name: "DEC (HL)",
 				exec() {
+          const addr = z80.reg16[z80.regOffsets16.HL]
+          const a = z80.mmu.readByte(addr)
+          const res = a - 1
+          z80.mmu.writeByte(addr, res)
+          FLAGS_MMMV0N(z80, a, a, res)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 36 */ {
 				name: "LD (HL),\\1H",
 				exec() {
+          const addr = z80.reg16[z80.regOffsets16.HL]
+          const n = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          z80.mmu.writeByte(addr, n)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 37 */ {
 				name: "SCF",
 				exec() {
+          z80.flags.C = true
+          z80.flags.H = false
+          z80.flags.N = false
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 38 */ {
-				name: "JR C,e",
+				name: "JR C,\\1H",
 				exec() {
+          if(z80.flags.C) {
+            const offset = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+            let pc = z80.reg16[z80.regOffsets16.PC]
+            pc += this.length
+            pc += (offset & 0x80)? offset - 0x100 : offset
+            z80.reg16[z80.regOffsets16.PC] = pc
+            return true
+          }
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 39 */ {
@@ -658,10 +746,13 @@ export default class Z80 {
 				length: 1
 			 },
       /* 3A */ {
-				name: "LA A,(\\2\\1H)",
+				name: "LD A,(\\2\\1H)",
 				exec() {
+          const nl = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2)
+          const val = z80.mmu.readByte((nh << 8) | nl)
+          z80.reg8[z80.regOffsets8.A] = val
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* 3B */ {
@@ -696,8 +787,10 @@ export default class Z80 {
       /* 3F */ {
 				name: "CCF",
 				exec() {
+          z80.flags.C = !z80.flags.C
+          z80.flags.H = !z80.flags.H
+          z80.flags.N = false
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 40 */ {
@@ -1191,8 +1284,13 @@ export default class Z80 {
       /* 86 */ {
 				name: "ADD A,(HL)",
 				exec() {
+          const addr = z80.reg16[z80.regOffsets16.HL]
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(addr)
+          const res = a + b
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMV0M(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 87 */ {
@@ -1247,8 +1345,13 @@ export default class Z80 {
       /* 8E */ {
 				name: "ADC A,(HL)",
 				exec() {
+          const addr = z80.reg16[z80.regOffsets16.HL]
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(addr)
+          const res = a + b + (z80.flags.C)? 0x01 : 0x00
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMV0M(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 8F */ {
@@ -1303,8 +1406,13 @@ export default class Z80 {
       /* 96 */ {
 				name: "SUB A,(HL)",
 				exec() {
+          const addr = z80.reg16[z80.regOffsets16.HL]
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(addr)
+          const res = a - b
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMV1M(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 97 */ {
@@ -1359,8 +1467,13 @@ export default class Z80 {
       /* 9E */ {
 				name: "SBC A,(HL)",
 				exec() {
+          const addr = z80.reg16[z80.regOffsets16.HL]
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(addr)
+          const res = a - b - (z80.flags.C)? 0x01 : 0x00
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMV1M(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 9F */ {
@@ -1471,8 +1584,13 @@ export default class Z80 {
       /* AE */ {
 				name: "XOR (HL)",
 				exec() {
+          const addr = z80.reg16[z80.regOffsets16.HL]
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(addr)
+          const res = a ^ b
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMP00(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* AF */ {
@@ -1527,8 +1645,13 @@ export default class Z80 {
       /* B6 */ {
 				name: "OR (HL)",
 				exec() {
+          const addr = z80.reg16[z80.regOffsets16.HL]
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(addr)
+          const res = a | b
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMP00(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* B7 */ {
@@ -1541,57 +1664,61 @@ export default class Z80 {
       /* B8 */ {
 				name: "CP B",
 				exec() {
+          CP_R(z80, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* B9 */ {
 				name: "CP C",
 				exec() {
+          CP_R(z80, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* BA */ {
 				name: "CP D",
 				exec() {
+          CP_R(z80, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* BB */ {
 				name: "CP E",
 				exec() {
+          CP_R(z80, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* BC */ {
 				name: "CP H",
 				exec() {
+          CP_R(z80, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* BD */ {
 				name: "CP L",
 				exec() {
+          CP_R(z80, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* BE */ {
 				name: "CP (HL)",
 				exec() {
+          const addr = z80.reg16[z80.regOffsets16.HL]
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(addr)
+          z80.reg8[z80.regOffsets8.A] = b
+          FLAGS_MMMV1M(z80, a, b, b)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* BF */ {
 				name: "CP A",
 				exec() {
+          CP_R(z80, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* C0 */ {
@@ -3930,8 +4057,8 @@ export default class Z80 {
       /* 43 */ {
 				name: "LD (\\2\\1H),BC",
 				exec() {
+          LD_TO_NNNN_RR(z80, z80.regOffsets16.BC)
 				},
-				unimplemented: true,
 				length: 4
 			 },
       /* 44 */ {
@@ -4042,8 +4169,8 @@ export default class Z80 {
       /* 53 */ {
 				name: "LD (\\2\\1H),DE",
 				exec() {
+          LD_TO_NNNN_RR(z80, z80.regOffsets16.DE)
 				},
-				unimplemented: true,
 				length: 4
 			 },
       /* 54 */ {
@@ -4154,8 +4281,8 @@ export default class Z80 {
       /* 63 */ {
 				name: "LD (\\2\\1H),HL",
 				exec() {
+          LD_TO_NNNN_RR(z80, z80.regOffsets16.HL)
 				},
-				unimplemented: true,
 				length: 4
 			 },
       /* 64 */ {
@@ -4266,8 +4393,8 @@ export default class Z80 {
       /* 73 */ {
 				name: "LD (\\2\\1H),SP",
 				exec() {
+          LD_TO_NNNN_RR(z80, z80.regOffsets16.SP)
 				},
-				unimplemented: true,
 				length: 4
 			 },
       /* 74 */ {
