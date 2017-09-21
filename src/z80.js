@@ -12,6 +12,16 @@ DEFINE_MACRO(FLAGS_MMMV0M, (z80, a, b, r) => {
   z80.flags.C = (r > 255)
 })
 
+DEFINE_MACRO(FLAGS_MMMV0N, (z80, a, b, r) => {
+  z80.flags.S = ((r & 0x80) !== 0)
+  z80.flags.Z = !(r & 0xFF)
+  z80.flags.Y = ((r & 0x20) !== 0)
+  z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
+  z80.flags.X = ((r & 0x08) !== 0)
+  z80.flags.P = (((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80)))
+  z80.flags.N = false
+})
+
 DEFINE_MACRO(FLAGS_MMMV1M, (z80, a, b, r) => {
   z80.flags.S = ((r & 0x80) !== 0)
   z80.flags.Z = !(r & 0xFF)
@@ -23,6 +33,16 @@ DEFINE_MACRO(FLAGS_MMMV1M, (z80, a, b, r) => {
   z80.flags.C = (r > 255)
 })
 
+DEFINE_MACRO(FLAGS_MMMV1N, (z80, a, b, r) => {
+  z80.flags.S = ((r & 0x80) !== 0)
+  z80.flags.Z = !(r & 0xFF)
+  z80.flags.Y = ((r & 0x20) !== 0)
+  z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
+  z80.flags.X = ((r & 0x08) !== 0)
+  z80.flags.P = (((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80)))
+  z80.flags.N = true
+})
+
 DEFINE_MACRO(FLAGS_MMMP00, (z80, a, b, r) => {
   z80.flags.S = ((r & 0x80) !== 0)
   z80.flags.Z = !(r & 0xFF)
@@ -32,6 +52,28 @@ DEFINE_MACRO(FLAGS_MMMP00, (z80, a, b, r) => {
   z80.flags.P = z80.getParity(r)
   z80.flags.N = false
   z80.flags.C = false
+})
+
+DEFINE_MACRO(FLAGS_NN0N0M, (z80, a, b, r) => {
+  //z80.flags.S = 
+  //z80.flags.Z = 
+  z80.flags.Y = ((r & 0x20) !== 0)
+  z80.flags.H = false
+  z80.flags.X = ((r & 0x08) !== 0)
+  //z80.flags.P = 
+  z80.flags.N = false
+  z80.flags.C = (r > 255)
+})
+
+DEFINE_MACRO(FLAGS_NNMN0M, (z80, a, b, r) => {
+  //z80.flags.S = 
+  //z80.flags.Z = 
+  z80.flags.Y = ((r & 0x20) !== 0)
+  z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
+  z80.flags.X = ((r & 0x08) !== 0)
+  //z80.flags.P = 
+  z80.flags.N = false
+  z80.flags.C = (r > 255)
 })
 
 DEFINE_MACRO(JP_CC_NNNN, (z80, cond, length) => {
@@ -76,12 +118,26 @@ DEFINE_MACRO(LD_R_R, (z80, r, r2) => {
   z80.reg8[r] = z80.reg8[r2]
 })
 
+DEFINE_MACRO(LD_TO_RR_R, (z80, r, r2) => {
+  const addr = z80.reg16[r]
+  const val = z80.reg8[r2]
+  z80.mmu.writeByte(addr, val)
+})
+
 DEFINE_MACRO(ADD_R_R, (z80, r, r2) => {
   const a = z80.reg8[r]
   const b = z80.reg8[r2]
   const res = a + b
   z80.reg8[r] = res
   FLAGS_MMMV0M(z80, a, b, res)
+})
+
+DEFINE_MACRO(ADD_RR_RR, (z80, r, r2) => {
+  const a = z80.reg16[r]
+  const b = z80.reg16[r2]
+  const res = a + b
+  z80.reg16[r] = res
+  FLAGS_NNMN0M(z80, a, b, res)
 })
 
 DEFINE_MACRO(ADC_R_R, (z80, r, r2) => {
@@ -133,6 +189,35 @@ DEFINE_MACRO(OR_R, (z80, r) => {
   FLAGS_MMMP00(z80, a, r, res)
 })
 
+DEFINE_MACRO(INC_RR, (z80, r) => {
+  z80.reg16[r] += 1
+})
+
+DEFINE_MACRO(DEC_RR, (z80, r) => {
+  z80.reg16[r] -= 1
+})
+
+DEFINE_MACRO(INC_R, (z80, r) => {
+  const a = z80.reg8[r]
+  const res = a + 1
+  z80.reg8[r] = res
+  // TODO: Not sure what should be passed in as operand b here.
+  FLAGS_MMMV0N(z80, a, a, res)
+})
+
+DEFINE_MACRO(DEC_R, (z80, r) => {
+  const a = z80.reg8[r]
+  const res = a - 1
+  z80.reg8[r] = res
+  // TODO: Not sure what should be passed in as operand b here.
+  FLAGS_MMMV1N(z80, a, a, res)
+})
+
+DEFINE_MACRO(LD_R_FROM_RR, (z80, r, r2) => {
+  const addr = z80.reg16[r2]
+  z80.reg8[r] = z80.mmu.getByte(addr) 
+})
+
 export default class Z80 {
   constructor(mmu) {
     this.mmu = mmu
@@ -141,9 +226,7 @@ export default class Z80 {
     this.instructions = [
       /* 00 */ {
 				name: "NOP",
-				exec() {
-				},
-				unimplemented: true,
+				exec() {},
 				length: 1
 			 },
       /* 01 */ { 
@@ -156,29 +239,29 @@ export default class Z80 {
       /* 02 */ {
 				name: "LD (BC),A",
 				exec() {
+          LD_TO_RR_R(z80, z80.regOffsets16.BC, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 03 */ {
 				name: "INC BC",
 				exec() {
+          INC_RR(z80, z80.regOffsets16.BC)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 04 */ {
 				name: "INC B",
 				exec() {
+          INC_R(z80, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 05 */ {
 				name: "DEC B",
 				exec() {
+          DEC_R(z80, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 06 */ { 
@@ -191,50 +274,59 @@ export default class Z80 {
       /* 07 */ {
 				name: "RLCA",
 				exec() {
+          const a = z80.reg8[z80.regOffsets8.A]
+          const res = (a << 1) | (a >> 7)
+          z80.reg8[regOffsets8.A] = res
+          // TODO: Not sure about the second operand
+          FLAGS_NN0N0M(z80, a, a, res)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 08 */ {
 				name: "EX AF,AF'",
 				exec() {
+          const t = Object.assign({}, z80.flags)
+          Object.assign(z80.flags, z80.altFlags)
+          Object.assign(z80.altFlags, t)
+          const a = z80.reg8[z80.regOffsets8.A]
+          z80.reg8[z80.regOffsets8.A] = z80.reg8[z80.regOffsets8.A_]
+          z80.reg8[z80.regOffsets8.A_] = a
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 09 */ {
 				name: "ADD HL,BC",
 				exec() {
+          ADD_RR_RR(z80, z80.regOffsets16.HL, z80.regOffsets16.BC)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 0A */ {
-				name: "LA A,(BC)",
+				name: "LD A,(BC)",
 				exec() {
+          LD_R_FROM_RR(z80, z80.regOffsets8.A, z80.regOffsets16.BC)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 0B */ {
 				name: "DEC BC",
 				exec() {
+          DEC_RR(z80, z80.regOffsets16.BC)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 0C */ {
 				name: "INC C",
 				exec() {
+          INC_R(z80, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 0D */ {
 				name: "DEC C",
 				exec() {
+          DEC_R(z80, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 0E */ {
@@ -247,15 +339,29 @@ export default class Z80 {
       /* 0F */ {
 				name: "RRCA",
 				exec() {
+          const a = z80.reg8[z80.regOffsets8.A]
+          const res = (a >> 1) | (a << 7)
+          z80.reg8[regOffsets8.A] = res
+          // TODO: Not sure about the second operand
+          FLAGS_NN0N0M(z80, a, a, res)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 10 */ {
-				name: "DJNZ e",
+				name: "DJNZ \\1H",
 				exec() {
+          let b = z80.reg8[z80.regOffsets8.B]
+          const offset = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          b -= 1
+          z80.reg8[z80.regOffsets8.B] = b 
+          if(b !== 0) {
+            let pc = z80.reg16[z80.regOffsets16.PC]
+            pc += this.length
+            pc += (offset & 0x80)? offset - 0x100 : offset
+            z80.reg16[z80.regOffsets16.PC] = pc
+            return true
+          }
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 11 */ {
@@ -268,29 +374,29 @@ export default class Z80 {
       /* 12 */ {
 				name: "LD (DE),A",
 				exec() {
+          LD_TO_RR_R(z80, z80.regOffsets16.DE, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 13 */ {
 				name: "INC DE",
 				exec() {
+          INC_RR(z80, z80.regOffsets16.DE)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 14 */ {
 				name: "INC D",
 				exec() {
+          INC_R(z80, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 15 */ {
 				name: "DEC D",
 				exec() {
+          DEC_R(z80, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 16 */ {
@@ -317,8 +423,8 @@ export default class Z80 {
       /* 19 */ {
 				name: "ADD HL,DE",
 				exec() {
+          ADD_RR_RR(z80, z80.regOffsets16.HL, z80.regOffsets16.DE)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 1A */ {
@@ -331,22 +437,22 @@ export default class Z80 {
       /* 1B */ {
 				name: "DEC DE",
 				exec() {
+          DEC_RR(z80, z80.regOffsets16.DE)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 1C */ {
 				name: "INC E",
 				exec() {
+          INC_R(z80, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 1D */ {
 				name: "DEC E",
 				exec() {
+          DEC_R(z80, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 1E */ {
@@ -387,22 +493,22 @@ export default class Z80 {
       /* 23 */ {
 				name: "INC HL",
 				exec() {
+          INC_RR(z80, z80.regOffsets16.HL)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 24 */ {
 				name: "INC H",
 				exec() {
+          INC_R(z80, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 25 */ {
 				name: "DEC H",
 				exec() {
+          DEC_R(z80, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 26 */ {
@@ -429,8 +535,8 @@ export default class Z80 {
       /* 29 */ {
 				name: "ADD HL,HL",
 				exec() {
+          ADD_RR_RR(z80, z80.regOffsets16.HL, z80.regOffsets16.HL)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 2A */ {
@@ -443,22 +549,22 @@ export default class Z80 {
       /* 2B */ {
 				name: "DEC HL",
 				exec() {
+          DEC_RR(z80, z80.regOffsets16.HL)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 2C */ {
 				name: "INC L",
 				exec() {
+          INC_R(z80, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 2D */ {
 				name: "DEC L",
 				exec() {
+          DEC_R(z80, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 2E */ {
@@ -499,8 +605,8 @@ export default class Z80 {
       /* 33 */ {
 				name: "INC SP",
 				exec() {
+          INC_RR(z80, z80.regOffsets16.SP)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 34 */ {
@@ -541,8 +647,8 @@ export default class Z80 {
       /* 39 */ {
 				name: "ADD HL,SP",
 				exec() {
+          ADD_RR_RR(z80, z80.regOffsets16.HL, z80.regOffsets16.SP)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 3A */ {
@@ -555,22 +661,22 @@ export default class Z80 {
       /* 3B */ {
 				name: "DEC SP",
 				exec() {
+          DEC_RR(z80, z80.regOffsets16.SP)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 3C */ {
 				name: "INC A",
 				exec() {
+          INC_R(z80, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 3D */ {
 				name: "DEC A",
 				exec() {
+          DEC_R(z80, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 3E */ {
@@ -632,7 +738,9 @@ export default class Z80 {
       },
       /* 46 */ {
         name: "LD B,(HL)",
-        exec() {},
+        exec() {
+          LD_R_FROM_RR(z80, z80.regOffsets8.B, z80.regOffsets16.HL)
+        },
         length: 1
       },
       /* 47 */ {
@@ -687,8 +795,8 @@ export default class Z80 {
       /* 4E */ {
 				name: "LD C,(HL)",
 				exec() {
+          LD_R_FROM_RR(z80, z80.regOffsets8.C, z80.regOffsets16.HL)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 4F */ {
@@ -743,8 +851,8 @@ export default class Z80 {
       /* 56 */ {
 				name: "LD D,(HL)",
 				exec() {
+          LD_R_FROM_RR(z80, z80.regOffsets8.D, z80.regOffsets16.HL)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 57 */ {
@@ -799,8 +907,8 @@ export default class Z80 {
       /* 5E */ {
 				name: "LD E,(HL)",
 				exec() {
+          LD_R_FROM_RR(z80, z80.regOffsets8.E, z80.regOffsets16.HL)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 5F */ {
@@ -855,8 +963,8 @@ export default class Z80 {
       /* 66 */ {
 				name: "LD H,(HL)",
 				exec() {
+          LD_R_FROM_RR(z80, z80.regOffsets8.H, z80.regOffsets16.HL)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 67 */ {
@@ -910,8 +1018,8 @@ export default class Z80 {
       /* 6E */ {
 				name: "LD L,(HL)",
 				exec() {
+          LD_R_FROM_RR(z80, z80.regOffsets8.L, z80.regOffsets16.HL)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 6F */ {
@@ -924,43 +1032,43 @@ export default class Z80 {
       /* 70 */ {
 				name: "LD (HL),B",
 				exec() {
+          LD_TO_RR_R(z80, z80.regOffsets16.HL, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 71 */ {
 				name: "LD (HL),C",
 				exec() {
+          LD_TO_RR_R(z80, z80.regOffsets16.HL, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 72 */ {
 				name: "LD (HL),D",
 				exec() {
+          LD_TO_RR_R(z80, z80.regOffsets16.HL, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 73 */ {
 				name: "LD (HL),E",
 				exec() {
+          LD_TO_RR_R(z80, z80.regOffsets16.HL, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 74 */ {
 				name: "LD (HL),H",
 				exec() {
+          LD_TO_RR_R(z80, z80.regOffsets16.HL, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 75 */ {
 				name: "LD (HL),L",
 				exec() {
+          LD_TO_RR_R(z80, z80.regOffsets16.HL, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 76 */ {
@@ -973,8 +1081,8 @@ export default class Z80 {
       /* 77 */ {
 				name: "LD (HL),A",
 				exec() {
+          LD_TO_RR_R(z80, z80.regOffsets16.HL, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 78 */ {
@@ -1022,8 +1130,8 @@ export default class Z80 {
       /* 7E */ {
 				name: "LD A,(HL)",
 				exec() {
+          LD_R_FROM_RR(z80, z80.regOffsets8.A, z80.regOffsets16.HL)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 7F */ {
@@ -3728,70 +3836,70 @@ export default class Z80 {
     ]
 
     this.ed_instructions = [
-      /* 00 */ {},
-      /* 01 */ {},
-      /* 02 */ {},
-      /* 03 */ {},
-      /* 04 */ {},
-      /* 05 */ {},
-      /* 06 */ {},
-      /* 07 */ {},
-      /* 08 */ {},
-      /* 09 */ {},
-      /* 0A */ {},
-      /* 0B */ {},
-      /* 0C */ {},
-      /* 0D */ {},
-      /* 0D */ {},
-      /* 0F */ {},
-      /* 10 */ {},
-      /* 11 */ {},
-      /* 12 */ {},
-      /* 13 */ {},
-      /* 14 */ {},
-      /* 15 */ {},
-      /* 16 */ {},
-      /* 17 */ {},
-      /* 18 */ {},
-      /* 19 */ {},
-      /* 1A */ {},
-      /* 1B */ {},
-      /* 1C */ {},
-      /* 1D */ {},
-      /* 1E */ {},
-      /* 1F */ {},
-      /* 20 */ {},
-      /* 21 */ {},
-      /* 22 */ {},
-      /* 23 */ {},
-      /* 24 */ {},
-      /* 25 */ {},
-      /* 26 */ {},
-      /* 27 */ {},
-      /* 28 */ {},
-      /* 29 */ {},
-      /* 2A */ {},
-      /* 2B */ {},
-      /* 2C */ {},
-      /* 2D */ {},
-      /* 2E */ {},
-      /* 2F */ {},
-      /* 30 */ {},
-      /* 31 */ {},
-      /* 32 */ {},
-      /* 33 */ {},
-      /* 34 */ {},
-      /* 35 */ {},
-      /* 36 */ {},
-      /* 37 */ {},
-      /* 38 */ {},
-      /* 39 */ {},
-      /* 3A */ {},
-      /* 3B */ {},
-      /* 3C */ {},
-      /* 3D */ {},
-      /* 3E */ {},
-      /* 3F */ {},
+      /* 00 */ null,
+      /* 01 */ null,
+      /* 02 */ null,
+      /* 03 */ null,
+      /* 04 */ null,
+      /* 05 */ null,
+      /* 06 */ null,
+      /* 07 */ null,
+      /* 08 */ null,
+      /* 09 */ null,
+      /* 0A */ null,
+      /* 0B */ null,
+      /* 0C */ null,
+      /* 0D */ null,
+      /* 0D */ null,
+      /* 0F */ null,
+      /* 10 */ null,
+      /* 11 */ null,
+      /* 12 */ null,
+      /* 13 */ null,
+      /* 14 */ null,
+      /* 15 */ null,
+      /* 16 */ null,
+      /* 17 */ null,
+      /* 18 */ null,
+      /* 19 */ null,
+      /* 1A */ null,
+      /* 1B */ null,
+      /* 1C */ null,
+      /* 1D */ null,
+      /* 1E */ null,
+      /* 1F */ null,
+      /* 20 */ null,
+      /* 21 */ null,
+      /* 22 */ null,
+      /* 23 */ null,
+      /* 24 */ null,
+      /* 25 */ null,
+      /* 26 */ null,
+      /* 27 */ null,
+      /* 28 */ null,
+      /* 29 */ null,
+      /* 2A */ null,
+      /* 2B */ null,
+      /* 2C */ null,
+      /* 2D */ null,
+      /* 2E */ null,
+      /* 2F */ null,
+      /* 30 */ null,
+      /* 31 */ null,
+      /* 32 */ null,
+      /* 33 */ null,
+      /* 34 */ null,
+      /* 35 */ null,
+      /* 36 */ null,
+      /* 37 */ null,
+      /* 38 */ null,
+      /* 39 */ null,
+      /* 3A */ null,
+      /* 3B */ null,
+      /* 3C */ null,
+      /* 3D */ null,
+      /* 3E */ null,
+      /* 3F */ null,
       /* 40 */ {
 				name: "IN B,(C)",
 				exec() {
@@ -4233,39 +4341,39 @@ export default class Z80 {
 				unimplemented: true,
 				length: 2
 			 },
-      /* 7F */ {},
-      /* 80 */ {},
-      /* 81 */ {},
-      /* 82 */ {},
-      /* 83 */ {},
-      /* 84 */ {},
-      /* 85 */ {},
-      /* 86 */ {},
-      /* 87 */ {},
-      /* 88 */ {},
-      /* 89 */ {},
-      /* 8A */ {},
-      /* 8B */ {},
-      /* 8C */ {},
-      /* 8D */ {},
-      /* 8E */ {},
-      /* 8F */ {},
-      /* 90 */ {},
-      /* 91 */ {},
-      /* 92 */ {},
-      /* 93 */ {},
-      /* 94 */ {},
-      /* 95 */ {},
-      /* 96 */ {},
-      /* 97 */ {},
-      /* 98 */ {},
-      /* 99 */ {},
-      /* 9A */ {},
-      /* 9B */ {},
-      /* 9C */ {},
-      /* 9D */ {},
-      /* 9E */ {},
-      /* 9F */ {},
+      /* 7F */ null,
+      /* 80 */ null,
+      /* 81 */ null,
+      /* 82 */ null,
+      /* 83 */ null,
+      /* 84 */ null,
+      /* 85 */ null,
+      /* 86 */ null,
+      /* 87 */ null,
+      /* 88 */ null,
+      /* 89 */ null,
+      /* 8A */ null,
+      /* 8B */ null,
+      /* 8C */ null,
+      /* 8D */ null,
+      /* 8E */ null,
+      /* 8F */ null,
+      /* 90 */ null,
+      /* 91 */ null,
+      /* 92 */ null,
+      /* 93 */ null,
+      /* 94 */ null,
+      /* 95 */ null,
+      /* 96 */ null,
+      /* 97 */ null,
+      /* 98 */ null,
+      /* 99 */ null,
+      /* 9A */ null,
+      /* 9B */ null,
+      /* 9C */ null,
+      /* 9D */ null,
+      /* 9E */ null,
+      /* 9F */ null,
       /* A0 */ {
 				name: "LDI",
 				exec() {
@@ -4294,10 +4402,10 @@ export default class Z80 {
 				unimplemented: true,
 				length: 2
 			 },
-      /* A4 */ {},
-      /* A5 */ {},
-      /* A6 */ {},
-      /* A7 */ {},
+      /* A4 */ null,
+      /* A5 */ null,
+      /* A6 */ null,
+      /* A7 */ null,
       /* A8 */ {
 				name: "LDD",
 				exec() {
@@ -4326,10 +4434,10 @@ export default class Z80 {
 				unimplemented: true,
 				length: 2
 			 },
-      /* AC */ {},
-      /* AD */ {},
-      /* AE */ {},
-      /* AF */ {},
+      /* AC */ null,
+      /* AD */ null,
+      /* AE */ null,
+      /* AF */ null,
       /* B0 */ {
 				name: "LDIR",
 				exec() {
@@ -4358,10 +4466,10 @@ export default class Z80 {
 				unimplemented: true,
 				length: 2
 			 },
-      /* B4 */ {},
-      /* B5 */ {},
-      /* B6 */ {},
-      /* B7 */ {},
+      /* B4 */ null,
+      /* B5 */ null,
+      /* B6 */ null,
+      /* B7 */ null,
       /* B8 */ {
 				name: "LDDR",
 				exec() {
@@ -4390,93 +4498,99 @@ export default class Z80 {
 				unimplemented: true,
 				length: 2
 			 },
-      /* BC */ {},
-      /* BD */ {},
-      /* BE */ {},
-      /* BF */ {},
-      /* C0 */ {},
-      /* C1 */ {},
-      /* C2 */ {},
-      /* C3 */ {},
-      /* C4 */ {},
-      /* C5 */ {},
-      /* C6 */ {},
-      /* C7 */ {},
-      /* C8 */ {},
-      /* C9 */ {},
-      /* CA */ {},
-      /* CB */ {},
-      /* CC */ {},
-      /* CD */ {},
-      /* CE */ {},
-      /* CF */ {},
-      /* D0 */ {},
-      /* D1 */ {},
-      /* D2 */ {},
-      /* D3 */ {},
-      /* D4 */ {},
-      /* D5 */ {},
-      /* D6 */ {},
-      /* D7 */ {},
-      /* D8 */ {},
-      /* D9 */ {},
-      /* DA */ {},
-      /* DB */ {},
-      /* DC */ {},
-      /* DD */ {},
-      /* DE */ {},
-      /* DF */ {},
-      /* E0 */ {},
-      /* E1 */ {},
-      /* E2 */ {},
-      /* E3 */ {},
-      /* E4 */ {},
-      /* E5 */ {},
-      /* E6 */ {},
-      /* E7 */ {},
-      /* E8 */ {},
-      /* E9 */ {},
-      /* EA */ {},
-      /* EB */ {},
-      /* EC */ {},
-      /* ED */ {},
-      /* EE */ {},
-      /* EF */ {},
-      /* F0 */ {},
-      /* F1 */ {},
-      /* F2 */ {},
-      /* F3 */ {},
-      /* F4 */ {},
-      /* F5 */ {},
-      /* F6 */ {},
-      /* F7 */ {},
-      /* F8 */ {},
-      /* F9 */ {},
-      /* FA */ {},
-      /* FB */ {},
-      /* FC */ {},
-      /* FD */ {},
-      /* FE */ {},
-      /* FF */ {},
+      /* BC */ null,
+      /* BD */ null,
+      /* BE */ null,
+      /* BF */ null,
+      /* C0 */ null,
+      /* C1 */ null,
+      /* C2 */ null,
+      /* C3 */ null,
+      /* C4 */ null,
+      /* C5 */ null,
+      /* C6 */ null,
+      /* C7 */ null,
+      /* C8 */ null,
+      /* C9 */ null,
+      /* CA */ null,
+      /* CB */ null,
+      /* CC */ null,
+      /* CD */ null,
+      /* CE */ null,
+      /* CF */ null,
+      /* D0 */ null,
+      /* D1 */ null,
+      /* D2 */ null,
+      /* D3 */ null,
+      /* D4 */ null,
+      /* D5 */ null,
+      /* D6 */ null,
+      /* D7 */ null,
+      /* D8 */ null,
+      /* D9 */ null,
+      /* DA */ null,
+      /* DB */ null,
+      /* DC */ null,
+      /* DD */ null,
+      /* DE */ null,
+      /* DF */ null,
+      /* E0 */ null,
+      /* E1 */ null,
+      /* E2 */ null,
+      /* E3 */ null,
+      /* E4 */ null,
+      /* E5 */ null,
+      /* E6 */ null,
+      /* E7 */ null,
+      /* E8 */ null,
+      /* E9 */ null,
+      /* EA */ null,
+      /* EB */ null,
+      /* EC */ null,
+      /* ED */ null,
+      /* EE */ null,
+      /* EF */ null,
+      /* F0 */ null,
+      /* F1 */ null,
+      /* F2 */ null,
+      /* F3 */ null,
+      /* F4 */ null,
+      /* F5 */ null,
+      /* F6 */ null,
+      /* F7 */ null,
+      /* F8 */ null,
+      /* F9 */ null,
+      /* FA */ null,
+      /* FB */ null,
+      /* FC */ null,
+      /* FD */ null,
+      /* FE */ null,
+      /* FF */ null,
     ]
 
     let unimplemented = 0
+    let total = 0
     for(let i = 0; i < this.instructions.length; i += 1) {
+      total += 1
       if(this.instructions[i].unimplemented) {
         unimplemented += 1;
       }
     }
     for(let i = 0; i < this.cb_instructions.length; i += 1) {
+      total += 1
       if(this.cb_instructions[i].unimplemented) {
         unimplemented += 1;
       }
     }
     for(let i = 0; i < this.ed_instructions.length; i += 1) {
-      if(this.ed_instructions[i].unimplemented) {
-        unimplemented += 1;
+      if(this.ed_instructions[i]) {
+        total += 1
+        if(this.ed_instructions[i].unimplemented) {
+          unimplemented += 1;
+        }
       }
     }
-    console.log(unimplemented);
+    console.log(`${total-unimplemented}/${total} (${unimplemented}) ${Math.round((100.0/total)*(total-unimplemented))}%`);
 
     this.registers = new ArrayBuffer(26)
     this.reg16 = new Uint16Array(this.registers)
@@ -4537,6 +4651,17 @@ export default class Z80 {
       C: true,
     }
 
+    this.altFlags = {
+      S: true,
+      Z: true,
+      Y: true,
+      H: true,
+      X: true,
+      P: true,
+      N: true,
+      C: true,
+    }
+
     this.reset()
   }
 
@@ -4555,6 +4680,14 @@ export default class Z80 {
     this.flags.P = true
     this.flags.N = true
     this.flags.C = true
+    this.flags.S_ = true
+    this.altFlags.Z = true
+    this.altFlags.Y = true
+    this.altFlags.H = true
+    this.altFlags.X = true
+    this.altFlags.P = true
+    this.altFlags.N = true
+    this.altFlags.C = true
   }
 
   getRegister8(reg) {
