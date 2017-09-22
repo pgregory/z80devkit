@@ -2,6 +2,25 @@ import {hexByte} from './utilities.js'
 
 // Macros for common flag update modes
 
+DEFINE_MACRO(PUSH_WORD, (z80, value) => {
+  let sp = z80.reg16[z80.regOffsets16.SP]
+  sp--
+  z80.mmu.writeByte(sp, value >> 8)
+  sp--
+  z80.mmu.writeByte(sp, value & 0xF)
+  z80.reg16[z80.regOffsets16.SP] = sp
+})
+
+DEFINE_MACRO(POP_WORD, (z80) => {
+  let sp = z80.reg16[z80.regOffsets16.SP]
+  const vl = z80.mmu.readByte(sp)
+  sp++
+  const vh = z80.mmu.readByte(sp)
+  sp++
+  z80.reg16[z80.regOffsets16.SP] = sp
+  return (vh << 8) | vl
+})
+
 DEFINE_MACRO(FLAGS_XY_A, (z80, a) => {
   z80.flags.Y = ((a & 0x20) !== 0)
   z80.flags.X = ((a & 0x08) !== 0)
@@ -96,7 +115,7 @@ DEFINE_MACRO(LD_RR_FROM_NNNN, (z80, r) => {
   // Read address from opcode
   const nl = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
   const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
-  const addr = nh << 8 + nl
+  const addr = (nh << 8) + nl
   // Read data from address
   const rh = z80.mmu.readByte(addr)
   const rl = z80.mmu.readByte(addr + 1)
@@ -108,7 +127,7 @@ DEFINE_MACRO(LD_TO_NNNN_R, (z80, r) => {
   // Read address from opcode
   const nl = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
   const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
-  const addr = nh << 8 + nl
+  const addr = (nh << 8) + nl
   const value = z80.reg8[r]
   z80.mmu.writeByte(addr, value & 0xFF)
 })
@@ -117,7 +136,7 @@ DEFINE_MACRO(LD_TO_NNNN_RR, (z80, r) => {
   // Read address from opcode
   const nl = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
   const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
-  let addr = nh << 8 + nl
+  let addr = (nh << 8) + nl
   const value = z80.reg16[r]
   z80.mmu.writeByte(addr, value & 0xFF)
   addr = (addr + 1) & 0xFFFF
@@ -250,6 +269,38 @@ DEFINE_MACRO(CP_R, (z80, r) => {
   const b = z80.reg8[r]
   z80.reg8[z80.regOffsets8.A] = b
   FLAGS_MMMV1M(z80, a, b, b)
+})
+
+DEFINE_MACRO(CALL, (z80, length) => {
+  // Read address from opcode
+  let pc = z80.reg16[z80.regOffsets16.PC]
+  const nl = z80.mmu.readByte(pc + 1) 
+  const nh = z80.mmu.readByte(pc + 2) 
+  let addr = (nh << 8) + nl
+  pc += length
+  PUSH_WORD(z80, pc)
+  z80.reg16[z80.regOffsets16.PC] = addr
+  return true
+})
+
+DEFINE_MACRO(CALL_CC, (z80, c, length) => {
+  if(c) {
+    return CALL(z80, length)
+  }
+})
+
+DEFINE_MACRO(RET, (z80) => {
+  // Pop return address from stack
+  const addr = POP_WORD(z80)
+  console.log(addr.toString(16))
+  z80.reg16[z80.regOffsets16.PC] = addr
+  return true
+})
+
+DEFINE_MACRO(RET_CC, (z80, c) => {
+  if(c) {
+    return RET(z80)
+  }
 })
 
 export default class Z80 {
@@ -1724,8 +1775,8 @@ export default class Z80 {
       /* C0 */ {
 				name: "RET NZ",
 				exec() {
+          RET_CC(z80, !z80.flags.Z)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* C1 */ {
@@ -1754,8 +1805,8 @@ export default class Z80 {
       /* C4 */ {
 				name: "CALL NZ,\\2\\1H",
 				exec() {
+          return CALL_CC(z80, !z80.flags.Z, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* C5 */ {
@@ -1782,15 +1833,15 @@ export default class Z80 {
       /* C8 */ {
 				name: "RET Z",
 				exec() {
+          RET_CC(z80, z80.flags.Z)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* C9 */ {
 				name: "RET",
 				exec() {
+          return RET(z80)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* CA */ {
@@ -1810,15 +1861,15 @@ export default class Z80 {
       /* CC */ {
 				name: "CALL Z,\\2\\1H",
 				exec() {
+          return CALL_CC(z80, z80.flags.Z, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* CD */ {
 				name: "CALL \\2\\1H",
 				exec() {
+          return CALL(z80, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* CE */ {
@@ -1838,8 +1889,8 @@ export default class Z80 {
       /* D0 */ {
 				name: "RET NC",
 				exec() {
+          return RET_CC(z80, !z80.flags.C)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* D1 */ {
@@ -1866,8 +1917,8 @@ export default class Z80 {
       /* D4 */ {
 				name: "CALL NC,\\2\\1H",
 				exec() {
+          return CALL_CC(z80, !z80.flags.C, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* D5 */ {
@@ -1894,8 +1945,8 @@ export default class Z80 {
       /* D8 */ {
 				name: "RET C",
 				exec() {
+          return RET_CC(z80, z80.flags.C)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* D9 */ {
@@ -1922,8 +1973,8 @@ export default class Z80 {
       /* DC */ {
 				name: "CALL C,\\2\\1H",
 				exec() {
+          return CALL_CC(z80, z80.flags.C, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* DD */ {
@@ -1950,8 +2001,8 @@ export default class Z80 {
       /* E0 */ {
 				name: "RET PO",
 				exec() {
+          return RET_CC(z80, !z80.flags.P)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* E1 */ {
@@ -2006,8 +2057,8 @@ export default class Z80 {
       /* E8 */ {
 				name: "RET PE",
 				exec() {
+          return RET_CC(z80, z80.flags.P)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* E9 */ {
@@ -2034,8 +2085,8 @@ export default class Z80 {
       /* EC */ {
 				name: "CALL PE,\\2\\1H",
 				exec() {
+          return CALL_CC(z80, z80.flags.P, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* ED */ {
@@ -2062,8 +2113,8 @@ export default class Z80 {
       /* F0 */ {
 				name: "RET P",
 				exec() {
+          return RET_CC(z80, !z80.flags.S)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* F1 */ {
@@ -2090,8 +2141,8 @@ export default class Z80 {
       /* F4 */ {
 				name: "CALL P,\\2\\1H",
 				exec() {
+          return CALL_CC(z80, !z80.flags.S, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* F5 */ {
@@ -2118,8 +2169,8 @@ export default class Z80 {
       /* F8 */ {
 				name: "RET M",
 				exec() {
+          return RET_CC(z80, z80.flags.S)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* F9 */ {
@@ -2146,8 +2197,8 @@ export default class Z80 {
       /* FC */ {
 				name: "CALL M,\\2\\1H",
 				exec() {
+          return CALL_CC(z80, z80.flags.S, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* FD */ {
