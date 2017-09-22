@@ -84,6 +84,16 @@ DEFINE_MACRO(FLAGS_NN0N0M, (z80, a, b, r) => {
   FLAGS_XY_A(z80, r)
 })
 
+DEFINE_MACRO(FLAGS_MM0P0M, (z80, a, b, r) => {
+  z80.flags.S = ((r & 0x80) !== 0)
+  z80.flags.Z = !(r & 0xFF)
+  z80.flags.H = false
+  z80.flags.P = z80.getParity(r)
+  z80.flags.N = false
+  z80.flags.C = (r > 255)
+  FLAGS_XY_A(z80, r)
+})
+
 DEFINE_MACRO(FLAGS_NNMN0M, (z80, a, b, r) => {
   //z80.flags.S = 
   //z80.flags.Z = 
@@ -208,7 +218,7 @@ DEFINE_MACRO(AND_R, (z80, r) => {
   const b = z80.reg8[r]
   const res = a & b
   z80.reg8[z80.regOffsets8.A] = res
-  FLAGS_MMMP00(z80, a, r, res)
+  FLAGS_MMMP00(z80, a, b, res)
 })
 
 DEFINE_MACRO(XOR_R, (z80, r) => {
@@ -301,6 +311,104 @@ DEFINE_MACRO(RET_CC, (z80, c) => {
   if(c) {
     return RET(z80)
   }
+})
+
+DEFINE_MACRO(PUSH_RR, (z80, r) => {
+  PUSH_WORD(z80, z80.reg16[r])
+})
+
+DEFINE_MACRO(POP_RR, (z80, r) => {
+  z80.reg16[r] = POP_WORD(z80)
+})
+
+DEFINE_MACRO(RLC_R, (z80, r) => {
+  const a = z80.reg8[z80.regOffsets8.A]
+  const c = (a & 0x80) >> 7
+  const res = (a << 1) | c
+  z80.reg8[regOffsets8.A] = res
+  // TODO: Not sure about the second operand
+  FLAGS_MM0P0M(z80, a, a, res)
+  z80.flags.C = c? true : false
+})
+
+DEFINE_MACRO(RRC_R, (z80, r) => {
+  const a = z80.reg8[z80.regOffsets8.A]
+  const c = (a & 0x01) << 8
+  const res = (a >> 1) | c
+  z80.reg8[regOffsets8.A] = res
+  // TODO: Not sure about the second operand
+  FLAGS_MM0P0M(z80, a, a, res)
+  z80.flags.C = c? true : false
+})
+
+DEFINE_MACRO(RL_R, (z80, r) => {
+  const a = z80.reg8[z80.regOffsets8.A]
+  const c = (z80.flags.C)? 0x01 : 0x00
+  const s = a & 0x80
+  const res = (a << 1) | c
+  z80.reg8[regOffsets8.A] = res
+  // TODO: Not sure about the second operand
+  FLAGS_MM0P0M(z80, a, a, res)
+  z80.flags.C = s? true : false
+})
+
+DEFINE_MACRO(RR_R, (z80, r) => {
+  const a = z80.reg8[z80.regOffsets8.A]
+  const c = (z80.flags.C)? 0x80 : 0x00
+  const s = a & 0x01
+  const res = (a >> 1) | c
+  z80.reg8[regOffsets8.A] = res
+  // TODO: Not sure about the second operand
+  FLAGS_MM0P0M(z80, a, a, res)
+  z80.flags.C = s? true : false
+})
+
+DEFINE_MACRO(SLA_R, (z80, r) => {
+  const a = z80.reg8[z80.regOffsets8.A]
+  const s = a & 0x80
+  const res = (a << 1)
+  z80.reg8[regOffsets8.A] = res
+  // TODO: Not sure about the second operand
+  FLAGS_MM0P0M(z80, a, a, res)
+  z80.flags.C = s? true : false
+})
+
+DEFINE_MACRO(SRA_R, (z80, r) => {
+  const a = z80.reg8[z80.regOffsets8.A]
+  const c = a & 0x01
+  const s = a & 0x80
+  const res = (a >> 1) | s
+  z80.reg8[regOffsets8.A] = res
+  // TODO: Not sure about the second operand
+  FLAGS_MM0P0M(z80, a, a, res)
+  z80.flags.C = c? true : false
+})
+
+DEFINE_MACRO(SLL_R, (z80, r) => {
+  const a = z80.reg8[z80.regOffsets8.A]
+  const s = a & 0x80
+  const res = (a << 1) | 0x01
+  z80.reg8[regOffsets8.A] = res
+  // TODO: Not sure about the second operand
+  FLAGS_MM0P0M(z80, a, a, res)
+  z80.flags.C = s? true : false
+})
+
+DEFINE_MACRO(SRL_R, (z80, r) => {
+  const a = z80.reg8[z80.regOffsets8.A]
+  const c = a & 0x01
+  const res = (a >> 1)
+  z80.reg8[regOffsets8.A] = res
+  // TODO: Not sure about the second operand
+  FLAGS_MM0P0M(z80, a, a, res)
+  z80.flags.C = c? true : false
+})
+
+DEFINE_MACRO(BIT_B_R, (z80, b, r) => {
+  const res = z80.reg8[r] & (0x01 << b)
+  z80.flags.Z = res? true : false
+  z80.flags.H = true
+  z80.flags.N = false
 })
 
 export default class Z80 {
@@ -828,7 +936,7 @@ export default class Z80 {
 				length: 1
 			 },
       /* 3E */ {
-        name: "LA A,\\1H",
+        name: "LD A,\\1H",
         exec() {
           const n1 = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1) 
           z80.reg8[z80.regOffsets8.A] = n1
@@ -1579,8 +1687,13 @@ export default class Z80 {
       /* A6 */ {
 				name: "AND (HL)",
 				exec() {
+          const a = z80.reg8[z80.regOffsets8.A]
+          const addr = z80.reg16[z80.regOffsets16.HL]
+          const b = z80.mmu.readByte(addr)
+          const res = a & b
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMP00(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* A7 */ {
@@ -1782,15 +1895,15 @@ export default class Z80 {
       /* C1 */ {
 				name: "POP BC",
 				exec() {
+          POP_RR(z80, z80.regOffsets16.BC)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* C2 */ {
 				name: "JP NZ,\\2\\1H",
 				exec() {
+          return JP_CC_NNNN(z80, !z80.flags.Z, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* C3 */ {
@@ -1812,15 +1925,19 @@ export default class Z80 {
       /* C5 */ {
 				name: "PUSH BC",
 				exec() {
+          PUSH_RR(z80, z80.regOffsets.BC)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* C6 */ {
 				name: "ADD A,\\1H",
 				exec() {
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          const res = a + b
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMV0M(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* C7 */ {
@@ -1847,8 +1964,8 @@ export default class Z80 {
       /* CA */ {
 				name: "JP Z,\\2\\1H",
 				exec() {
+          return JP_CC_NNNN(z80, z80.flags.Z, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* CB */ {
@@ -1875,8 +1992,12 @@ export default class Z80 {
       /* CE */ {
 				name: "ADC A,\\1H",
 				exec() {
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          const res = a + b + (z80.flags.C)? 0x01 : 0x00
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMV0M(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* CF */ {
@@ -1896,8 +2017,8 @@ export default class Z80 {
       /* D1 */ {
 				name: "POP DE",
 				exec() {
+          POP_RR(z80, z80.regOffsets16.DE)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* D2 */ {
@@ -1924,15 +2045,19 @@ export default class Z80 {
       /* D5 */ {
 				name: "PUSH DE",
 				exec() {
+          PUSH_RR(z80, z80.regOffsets.DE)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* D6 */ {
 				name: "SUB A,\\1H",
 				exec() {
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          const res = a - b
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMV1M(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* D7 */ {
@@ -1987,8 +2112,12 @@ export default class Z80 {
       /* DE */ {
 				name: "SBC A,\\1H",
 				exec() {
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          const res = a - b - (z80.flags.C)? 0x01 : 0x00
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMV1M(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* DF */ {
@@ -2008,15 +2137,15 @@ export default class Z80 {
       /* E1 */ {
 				name: "POP HL",
 				exec() {
+          POP_RR(z80, z80.regOffsets16.HL)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* E2 */ {
 				name: "JP PO,\\2\\1H",
 				exec() {
+          return JP_CC_NNNN(z80, !z80.flags.P, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* E3 */ {
@@ -2027,24 +2156,28 @@ export default class Z80 {
 				length: 1
 			 },
       /* E4 */ {
-				name: "CAlL PO,\\2\\1H",
+				name: "CALL PO,\\2\\1H",
 				exec() {
+          CALL_CC(z80, !z80.flags.P, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* E5 */ {
 				name: "PUSH HL",
 				exec() {
+          PUSH_RR(z80, z80.regOffsets.HL)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* E6 */ {
 				name: "AND \\1H",
 				exec() {
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          const res = a & b
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMP00(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* E7 */ {
@@ -2064,22 +2197,26 @@ export default class Z80 {
       /* E9 */ {
 				name: "JP (HL)",
 				exec() {
+          const addr = z80.mmu.readWord(z80.reg16[z80.regOffsets16.HL])
+          z80.reg16[z80.regOffsets16.PC] = addr
+          return true
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* EA */ {
 				name: "JP PE,\\2\\1H",
 				exec() {
+          return JP_CC_NNNN(z80, z80.flags.P, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* EB */ {
 				name: "EX DE,HL",
 				exec() {
+          const de = z80.reg16[z80.regOffsets8.DE]
+          z80.reg16[z80.regOffsets8.DE] = z80.reg16[z80.regOffsets8.HL]
+          z80.reg16[z80.regOffsets8.HL] = de
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* EC */ {
@@ -2099,8 +2236,12 @@ export default class Z80 {
       /* EE */ {
 				name: "XOR \\1H",
 				exec() {
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC])
+          const res = a ^ b
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMP00(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* EF */ {
@@ -2120,15 +2261,16 @@ export default class Z80 {
       /* F1 */ {
 				name: "POP AF",
 				exec() {
+          POP_RR(z80, z80.regOffsets16.AF)
+          // TOOD: Need to read the "F" register out into the flags.
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* F2 */ {
 				name: "JP P,\\2\\1H",
 				exec() {
+          return JP_CC_NNNN(z80, !z80.flags.S, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* F3 */ {
@@ -2148,15 +2290,20 @@ export default class Z80 {
       /* F5 */ {
 				name: "PUSH AF",
 				exec() {
+          // TODO: Need to read the flags into the "F" register
+          PUSH_RR(z80, z80.regOffsets.AF)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* F6 */ {
 				name: "OR \\1H",
 				exec() {
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          const res = a | b
+          z80.reg8[z80.regOffsets8.A] = res
+          FLAGS_MMMP00(z80, a, b, res)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* F7 */ {
@@ -2183,8 +2330,8 @@ export default class Z80 {
       /* FA */ {
 				name: "JP M,\\2\\1H",
 				exec() {
+          return JP_CC_NNNN(z80, z80.flags.S, this.length)
 				},
-				unimplemented: true,
 				length: 3
 			 },
       /* FB */ {
@@ -2211,8 +2358,11 @@ export default class Z80 {
       /* FE */ {
 				name: "CP \\1H",
 				exec() {
+          const a = z80.reg8[z80.regOffsets8.A]
+          const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          z80.reg8[z80.regOffsets8.A] = b
+          FLAGS_MMMV1M(z80, a, b, b)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* FF */ {
@@ -2228,43 +2378,43 @@ export default class Z80 {
       /* 00 */ {
 				name: "RLC B",
 				exec() {
+          RLC_R(z80, z80.regOffsets.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 01 */ {
 				name: "RLC C",
 				exec() {
+          RLC_R(z80, z80.regOffsets.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 02 */ {
 				name: "RLC D",
 				exec() {
+          RLC_R(z80, z80.regOffsets.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 03 */ {
 				name: "RLC E",
 				exec() {
+          RLC_R(z80, z80.regOffsets.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 04 */ {
 				name: "RLC H",
 				exec() {
+          RLC_R(z80, z80.regOffsets.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 05 */ {
 				name: "RLC L",
 				exec() {
+          RLC_R(z80, z80.regOffsets.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 06 */ {
@@ -2277,50 +2427,50 @@ export default class Z80 {
       /* 07 */ {
 				name: "RLC A",
 				exec() {
+          RLC_R(z80, z80.regOffsets.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 08 */ {
 				name: "RRC B",
 				exec() {
+          RRC_R(z80, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 09 */ {
 				name: "RRC C",
 				exec() {
+          RRC_R(z80, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 0A */ {
 				name: "RRC D",
 				exec() {
+          RRC_R(z80, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 0B */ {
 				name: "RRC E",
 				exec() {
+          RRC_R(z80, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 0C */ {
 				name: "RRC H",
 				exec() {
+          RRC_R(z80, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 0D */ {
 				name: "RRC L",
 				exec() {
+          RRC_R(z80, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 0D */ {
@@ -2333,50 +2483,50 @@ export default class Z80 {
       /* 0F */ {
 				name: "RRC A",
 				exec() {
+          RRC_R(z80, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 10 */ {
 				name: "RL B",
 				exec() {
+          RL_R(z80, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 11 */ {
 				name: "RL C",
 				exec() {
+          RL_R(z80, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 12 */ {
 				name: "RL D",
 				exec() {
+          RL_R(z80, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 13 */ {
 				name: "RL E",
 				exec() {
+          RL_R(z80, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 14 */ {
 				name: "RL H",
 				exec() {
+          RL_R(z80, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 15 */ {
 				name: "RL L",
 				exec() {
+          RL_R(z80, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 16 */ {
@@ -2389,50 +2539,50 @@ export default class Z80 {
       /* 17 */ {
 				name: "RL A",
 				exec() {
+          RL_R(z80, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 18 */ {
 				name: "RR B",
 				exec() {
+          RR_R(z80, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 19 */ {
 				name: "RR C",
 				exec() {
+          RR_R(z80, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 1A */ {
 				name: "RR D",
 				exec() {
+          RR_R(z80, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 1B */ {
 				name: "RR E",
 				exec() {
+          RR_R(z80, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 1C */ {
 				name: "RR H",
 				exec() {
+          RR_R(z80, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 1D */ {
 				name: "RR L",
 				exec() {
+          RR_R(z80, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 1E */ {
@@ -2445,50 +2595,50 @@ export default class Z80 {
       /* 1F */ {
 				name: "RR A",
 				exec() {
+          RR_R(z80, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 20 */ {
 				name: "SLA B",
 				exec() {
+          SLA_R(z80, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 21 */ {
 				name: "SLA C",
 				exec() {
+          SLA_R(z80, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 22 */ {
 				name: "SLA D",
 				exec() {
+          SLA_R(z80, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 23 */ {
 				name: "SLA E",
 				exec() {
+          SLA_R(z80, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 24 */ {
 				name: "SLA H",
 				exec() {
+          SLA_R(z80, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 25 */ {
 				name: "SLA L",
 				exec() {
+          SLA_R(z80, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 26 */ {
@@ -2501,50 +2651,50 @@ export default class Z80 {
       /* 27 */ {
 				name: "SLA A",
 				exec() {
+          SLA_R(z80, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 28 */ {
 				name: "SRA B",
 				exec() {
+          SRA_R(z80, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 29 */ {
 				name: "SRA C",
 				exec() {
+          SRA_R(z80, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 2A */ {
 				name: "SRA D",
 				exec() {
+          SRA_R(z80, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 2B */ {
 				name: "SRA E",
 				exec() {
+          SRA_R(z80, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 2C */ {
 				name: "SRA H",
 				exec() {
+          SRA_R(z80, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 2D */ {
 				name: "SRA L",
 				exec() {
+          SRA_R(z80, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 2E */ {
@@ -2557,50 +2707,50 @@ export default class Z80 {
       /* 2F */ {
 				name: "SRA A",
 				exec() {
+          SRA_R(z80, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 30 */ {
 				name: "SLL B",
 				exec() {
+          SLL_R(z80, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 31 */ {
 				name: "SLL C",
 				exec() {
+          SLL_R(z80, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 32 */ {
 				name: "SLL D",
 				exec() {
+          SLL_R(z80, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 33 */ {
 				name: "SLL E",
 				exec() {
+          SLL_R(z80, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 34 */ {
 				name: "SLL H",
 				exec() {
+          SLL_R(z80, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 35 */ {
 				name: "SLL L",
 				exec() {
+          SLL_R(z80, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 36 */ {
@@ -2613,50 +2763,50 @@ export default class Z80 {
       /* 37 */ {
 				name: "SLL A",
 				exec() {
+          SLL_R(z80, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 38 */ {
 				name: "SRL B",
 				exec() {
+          SRL_R(z80, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 39 */ {
 				name: "SRL C",
 				exec() {
+          SRL_R(z80, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 3A */ {
 				name: "SRL D",
 				exec() {
+          SRL_R(z80, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 3B */ {
 				name: "SRL E",
 				exec() {
+          SRL_R(z80, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 3C */ {
 				name: "SRL H",
 				exec() {
+          SRL_R(z80, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 3D */ {
 				name: "SRL L",
 				exec() {
+          SRL_R(z80, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 3E */ {
@@ -2669,50 +2819,50 @@ export default class Z80 {
       /* 3F */ {
 				name: "SRL A",
 				exec() {
+          SRL_R(z80, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 40 */ {
 				name: "BIT 0,B",
 				exec() {
+          BIT_B_R(z80, 0, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 41 */ {
 				name: "BIT 0,C",
 				exec() {
+          BIT_B_R(z80, 0, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 42 */ {
 				name: "BIT 0,D",
 				exec() {
+          BIT_B_R(z80, 0, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 43 */ {
 				name: "BIT 0,E",
 				exec() {
+          BIT_B_R(z80, 0, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 44 */ {
 				name: "BIT 0,H",
 				exec() {
+          BIT_B_R(z80, 0, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 45 */ {
 				name: "BIT 0,L",
 				exec() {
+          BIT_B_R(z80, 0, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 46 */ {
@@ -2725,50 +2875,50 @@ export default class Z80 {
       /* 47 */ {
 				name: "BIT 0,A",
 				exec() {
+          BIT_B_R(z80, 0, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 48 */ {
 				name: "BIT 1,B",
 				exec() {
+          BIT_B_R(z80, 1, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 49 */ {
 				name: "BIT 1,C",
 				exec() {
+          BIT_B_R(z80, 1, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 4A */ {
 				name: "BIT 1,D",
 				exec() {
+          BIT_B_R(z80, 1, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 4B */ {
 				name: "BIT 1,E",
 				exec() {
+          BIT_B_R(z80, 1, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 4C */ {
 				name: "BIT 1,H",
 				exec() {
+          BIT_B_R(z80, 1, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 4D */ {
 				name: "BIT 1,L",
 				exec() {
+          BIT_B_R(z80, 1, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 4E */ {
@@ -2781,50 +2931,50 @@ export default class Z80 {
       /* 4F */ {
 				name: "BIT 1,A",
 				exec() {
+          BIT_B_R(z80, 1, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 50 */ {
 				name: "BIT 2,B",
 				exec() {
+          BIT_B_R(z80, 2, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 51 */ {
 				name: "BIT 2,C",
 				exec() {
+          BIT_B_R(z80, 2, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 52 */ {
 				name: "BIT 2,D",
 				exec() {
+          BIT_B_R(z80, 2, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 53 */ {
 				name: "BIT 2,E",
 				exec() {
+          BIT_B_R(z80, 2, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 54 */ {
 				name: "BIT 2,H",
 				exec() {
+          BIT_B_R(z80, 2, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 55 */ {
 				name: "BIT 2,L",
 				exec() {
+          BIT_B_R(z80, 2, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 56 */ {
@@ -2837,50 +2987,50 @@ export default class Z80 {
       /* 57 */ {
 				name: "BIT 2,A",
 				exec() {
+          BIT_B_R(z80, 2, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 58 */ {
 				name: "BIT 3,B",
 				exec() {
+          BIT_B_R(z80, 3, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 59 */ {
 				name: "BIT 3,C",
 				exec() {
+          BIT_B_R(z80, 3, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 5A */ {
 				name: "BIT 3,D",
 				exec() {
+          BIT_B_R(z80, 3, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 5B */ {
 				name: "BIT 3,E",
 				exec() {
+          BIT_B_R(z80, 3, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 5C */ {
 				name: "BIT 3,H",
 				exec() {
+          BIT_B_R(z80, 3, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 5D */ {
 				name: "BIT 3,L",
 				exec() {
+          BIT_B_R(z80, 3, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 5E */ {
@@ -2893,50 +3043,50 @@ export default class Z80 {
       /* 5F */ {
 				name: "BIT 3,A",
 				exec() {
+          BIT_B_R(z80, 3, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 60 */ {
 				name: "BIT 4,B",
 				exec() {
+          BIT_B_R(z80, 4, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 61 */ {
 				name: "BIT 4,C",
 				exec() {
+          BIT_B_R(z80, 4, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 62 */ {
 				name: "BIT 4,D",
 				exec() {
+          BIT_B_R(z80, 4, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 63 */ {
 				name: "BIT 4,E",
 				exec() {
+          BIT_B_R(z80, 4, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 64 */ {
 				name: "BIT 4,H",
 				exec() {
+          BIT_B_R(z80, 4, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 65 */ {
 				name: "BIT 4,L",
 				exec() {
+          BIT_B_R(z80, 4, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 66 */ {
@@ -2949,50 +3099,50 @@ export default class Z80 {
       /* 67 */ {
 				name: "BIT 4,A",
 				exec() {
+          BIT_B_R(z80, 4, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 68 */ {
 				name: "BIT 5,B",
 				exec() {
+          BIT_B_R(z80, 5, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 69 */ {
 				name: "BIT 5,C",
 				exec() {
+          BIT_B_R(z80, 5, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 6A */ {
 				name: "BIT 5,D",
 				exec() {
+          BIT_B_R(z80, 5, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 6B */ {
 				name: "BIT 5,E",
 				exec() {
+          BIT_B_R(z80, 5, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 6C */ {
 				name: "BIT 5,H",
 				exec() {
+          BIT_B_R(z80, 5, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 6D */ {
 				name: "BIT 5,L",
 				exec() {
+          BIT_B_R(z80, 5, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 6E */ {
@@ -3005,50 +3155,50 @@ export default class Z80 {
       /* 6F */ {
 				name: "BIT 5,A",
 				exec() {
+          BIT_B_R(z80, 5, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 70 */ {
 				name: "BIT 6,B",
 				exec() {
+          BIT_B_R(z80, 6, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 71 */ {
 				name: "BIT 6,C",
 				exec() {
+          BIT_B_R(z80, 6, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 72 */ {
 				name: "BIT 6,D",
 				exec() {
+          BIT_B_R(z80, 6, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 73 */ {
 				name: "BIT 6,E",
 				exec() {
+          BIT_B_R(z80, 6, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 74 */ {
 				name: "BIT 6,H",
 				exec() {
+          BIT_B_R(z80, 6, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 75 */ {
 				name: "BIT 6,L",
 				exec() {
+          BIT_B_R(z80, 6, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 76 */ {
@@ -3061,50 +3211,50 @@ export default class Z80 {
       /* 77 */ {
 				name: "BIT 6,A",
 				exec() {
+          BIT_B_R(z80, 6, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 78 */ {
 				name: "BIT 7,B",
 				exec() {
+          BIT_B_R(z80, 7, z80.regOffsets8.B)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 79 */ {
 				name: "BIT 7,C",
 				exec() {
+          BIT_B_R(z80, 7, z80.regOffsets8.C)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 7A */ {
 				name: "BIT 7,D",
 				exec() {
+          BIT_B_R(z80, 7, z80.regOffsets8.D)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 7B */ {
 				name: "BIT 7,E",
 				exec() {
+          BIT_B_R(z80, 7, z80.regOffsets8.E)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 7C */ {
 				name: "BIT 7,H",
 				exec() {
+          BIT_B_R(z80, 7, z80.regOffsets8.H)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 7D */ {
 				name: "BIT 7,L",
 				exec() {
+          BIT_B_R(z80, 7, z80.regOffsets8.L)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 7E */ {
@@ -3117,8 +3267,8 @@ export default class Z80 {
       /* 7F */ {
 				name: "BIT 7,A",
 				exec() {
+          BIT_B_R(z80, 7, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 2
 			 },
       /* 80 */ {
