@@ -172,6 +172,13 @@ DEFINE_MACRO(LD_TO_RR_R, (z80, r, r2) => {
   z80.mmu.writeByte(addr, val)
 })
 
+DEFINE_MACRO(LD_TO_HL_R, (z80, r, r2) => {
+  let addr = z80.reg16[r]
+  addr += ADJUST_ADDRESS(z80)
+  const val = z80.reg8[r2]
+  z80.mmu.writeByte(addr, val)
+})
+
 DEFINE_MACRO(ADD_R_R, (z80, r, r2) => {
   const a = z80.reg8[r]
   const b = z80.reg8[r2]
@@ -271,6 +278,12 @@ DEFINE_MACRO(DEC_R, (z80, r) => {
 
 DEFINE_MACRO(LD_R_FROM_RR, (z80, r, r2) => {
   const addr = z80.reg16[r2]
+  z80.reg8[r] = z80.mmu.readByte(addr) 
+})
+
+DEFINE_MACRO(LD_R_FROM_HL, (z80, r, r2) => {
+  let addr = z80.reg16[r2]
+  addr += ADJUST_ADDRESS(z80)
   z80.reg8[r] = z80.mmu.readByte(addr) 
 })
 
@@ -420,7 +433,8 @@ DEFINE_MACRO(BIT_B_R, (z80, b, r) => {
 })
 
 DEFINE_MACRO(BIT_B_AT_RR, (z80, b, r) => {
-  const addr = z80.reg16[r]
+  let addr = z80.reg16[r]
+  addr += ADJUST_ADDRESS(z80)
   const res = z80.mmu.readByte(addr) & (0x01 << b)
   z80.mmu.writeByte(addr, res)
   z80.flags.Z = res? true : false
@@ -433,7 +447,8 @@ DEFINE_MACRO(RES_B_R, (z80, b, r) => {
 })
 
 DEFINE_MACRO(RES_B_AT_RR, (z80, b, r) => {
-  const addr = z80.reg16[r]
+  let addr = z80.reg16[r]
+  addr += ADJUST_ADDRESS(z80)
   // TODO: is it right to do this in two operations, read and write?
   const val = z80.mmu.readByte(addr) & (0xFF ^ (0x01 << b))
   z80.mmu.writeByte(addr, res)
@@ -444,7 +459,8 @@ DEFINE_MACRO(SET_B_R, (z80, b, r) => {
 })
 
 DEFINE_MACRO(SET_B_AT_RR, (z80, b, r) => {
-  const addr = z80.reg16[r]
+  let addr = z80.reg16[r]
+  addr += AJUST_ADDRESS(z80)
   // TODO: is it right to do this in two operations, read and write?
   const val = z80.mmu.readByte(addr) | (0x01 << b)
   z80.mmu.writeByte(addr, res)
@@ -458,6 +474,17 @@ DEFINE_MACRO(LDI, (z80) => {
   z80.flags.H = false
   z80.flags.N = false
   z80.flags.P = (z80.reg16[z80.regOffsets16.BC] === 0)? false : true
+})
+
+DEFINE_MACRO(ADJUST_ADDRESS, (z80) => {
+  // If we're in 0xDD or 0xFD mode, read a byte from the PC
+  // and advance the PC, return the offset.
+  if(z80.regOffsets16.HL_IX_IY !== z80.regOffsets16.HL) {
+    const offset = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+    z80.reg16[z80.regOffsets16.PC] += 1
+    return (offset & 0x80)? offset - 0x100 : offset
+  }
+  return 0
 })
 
 export default class Z80 {
@@ -895,7 +922,8 @@ export default class Z80 {
       /* 34 */ {
 				name: "INC (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.mmu.readByte(addr)
           const res = a + 1
           z80.mmu.writeByte(addr, res)
@@ -906,7 +934,8 @@ export default class Z80 {
       /* 35 */ {
 				name: "DEC (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.mmu.readByte(addr)
           const res = a - 1
           z80.mmu.writeByte(addr, res)
@@ -917,7 +946,8 @@ export default class Z80 {
       /* 36 */ {
 				name: "LD (HL),\\1H",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const n = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
           z80.mmu.writeByte(addr, n)
 				},
@@ -1046,7 +1076,7 @@ export default class Z80 {
       /* 46 */ {
         name: "LD B,(HL)",
         exec() {
-          LD_R_FROM_RR(z80, z80.regOffsets8.B, z80.regOffsets16.HL_IX_IY)
+          LD_R_FROM_HL(z80, z80.regOffsets8.B, z80.regOffsets16.HL_IX_IY)
         },
         length: 1
       },
@@ -1102,7 +1132,7 @@ export default class Z80 {
       /* 4E */ {
 				name: "LD C,(HL)",
 				exec() {
-          LD_R_FROM_RR(z80, z80.regOffsets8.C, z80.regOffsets16.HL_IX_IY)
+          LD_R_FROM_HL(z80, z80.regOffsets8.C, z80.regOffsets16.HL_IX_IY)
 				},
 				length: 1
 			 },
@@ -1158,7 +1188,7 @@ export default class Z80 {
       /* 56 */ {
 				name: "LD D,(HL)",
 				exec() {
-          LD_R_FROM_RR(z80, z80.regOffsets8.D, z80.regOffsets16.HL_IX_IY)
+          LD_R_FROM_HL(z80, z80.regOffsets8.D, z80.regOffsets16.HL_IX_IY)
 				},
 				length: 1
 			 },
@@ -1214,7 +1244,7 @@ export default class Z80 {
       /* 5E */ {
 				name: "LD E,(HL)",
 				exec() {
-          LD_R_FROM_RR(z80, z80.regOffsets8.E, z80.regOffsets16.HL_IX_IY)
+          LD_R_FROM_HL(z80, z80.regOffsets8.E, z80.regOffsets16.HL_IX_IY)
 				},
 				length: 1
 			 },
@@ -1270,7 +1300,7 @@ export default class Z80 {
       /* 66 */ {
 				name: "LD H,(HL)",
 				exec() {
-          LD_R_FROM_RR(z80, z80.regOffsets8.H, z80.regOffsets16.HL_IX_IY)
+          LD_R_FROM_HL(z80, z80.regOffsets8.H, z80.regOffsets16.HL_IX_IY)
 				},
 				length: 1
 			 },
@@ -1325,7 +1355,7 @@ export default class Z80 {
       /* 6E */ {
 				name: "LD L,(HL)",
 				exec() {
-          LD_R_FROM_RR(z80, z80.regOffsets8.L, z80.regOffsets16.HL_IX_IY)
+          LD_R_FROM_HL(z80, z80.regOffsets8.L, z80.regOffsets16.HL_IX_IY)
 				},
 				length: 1
 			 },
@@ -1339,42 +1369,42 @@ export default class Z80 {
       /* 70 */ {
 				name: "LD (HL),B",
 				exec() {
-          LD_TO_RR_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.B)
+          LD_TO_HL_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.B)
 				},
 				length: 1
 			 },
       /* 71 */ {
 				name: "LD (HL),C",
 				exec() {
-          LD_TO_RR_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.C)
+          LD_TO_HL_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.C)
 				},
 				length: 1
 			 },
       /* 72 */ {
 				name: "LD (HL),D",
 				exec() {
-          LD_TO_RR_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.D)
+          LD_TO_HL_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.D)
 				},
 				length: 1
 			 },
       /* 73 */ {
 				name: "LD (HL),E",
 				exec() {
-          LD_TO_RR_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.E)
+          LD_TO_HL_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.E)
 				},
 				length: 1
 			 },
       /* 74 */ {
 				name: "LD (HL),H",
 				exec() {
-          LD_TO_RR_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.H)
+          LD_TO_HL_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.H)
 				},
 				length: 1
 			 },
       /* 75 */ {
 				name: "LD (HL),L",
 				exec() {
-          LD_TO_RR_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.L)
+          LD_TO_HL_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.L)
 				},
 				length: 1
 			 },
@@ -1388,7 +1418,7 @@ export default class Z80 {
       /* 77 */ {
 				name: "LD (HL),A",
 				exec() {
-          LD_TO_RR_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.A)
+          LD_TO_HL_R(z80, z80.regOffsets16.HL_IX_IY, z80.regOffsets8.A)
 				},
 				length: 1
 			 },
@@ -1437,7 +1467,7 @@ export default class Z80 {
       /* 7E */ {
 				name: "LD A,(HL)",
 				exec() {
-          LD_R_FROM_RR(z80, z80.regOffsets8.A, z80.regOffsets16.HL_IX_IY)
+          LD_R_FROM_HL(z80, z80.regOffsets8.A, z80.regOffsets16.HL_IX_IY)
 				},
 				length: 1
 			 },
@@ -1492,7 +1522,8 @@ export default class Z80 {
       /* 86 */ {
 				name: "ADD A,(HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.reg8[z80.regOffsets8.A]
           const b = z80.mmu.readByte(addr)
           const res = a + b
@@ -1553,7 +1584,8 @@ export default class Z80 {
       /* 8E */ {
 				name: "ADC A,(HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.reg8[z80.regOffsets8.A]
           const b = z80.mmu.readByte(addr)
           const res = a + b + (z80.flags.C)? 0x01 : 0x00
@@ -1614,7 +1646,8 @@ export default class Z80 {
       /* 96 */ {
 				name: "SUB A,(HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.reg8[z80.regOffsets8.A]
           const b = z80.mmu.readByte(addr)
           const res = a - b
@@ -1675,7 +1708,8 @@ export default class Z80 {
       /* 9E */ {
 				name: "SBC A,(HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.reg8[z80.regOffsets8.A]
           const b = z80.mmu.readByte(addr)
           const res = a - b - (z80.flags.C)? 0x01 : 0x00
@@ -1737,7 +1771,8 @@ export default class Z80 {
 				name: "AND (HL)",
 				exec() {
           const a = z80.reg8[z80.regOffsets8.A]
-          const addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const b = z80.mmu.readByte(addr)
           const res = a & b
           z80.reg8[z80.regOffsets8.A] = res
@@ -1797,7 +1832,8 @@ export default class Z80 {
       /* AE */ {
 				name: "XOR (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.reg8[z80.regOffsets8.A]
           const b = z80.mmu.readByte(addr)
           const res = a ^ b
@@ -1858,7 +1894,8 @@ export default class Z80 {
       /* B6 */ {
 				name: "OR (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.reg8[z80.regOffsets8.A]
           const b = z80.mmu.readByte(addr)
           const res = a | b
@@ -1919,7 +1956,8 @@ export default class Z80 {
       /* BE */ {
 				name: "CP (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.reg8[z80.regOffsets8.A]
           const b = z80.mmu.readByte(addr)
           z80.reg8[z80.regOffsets8.A] = b
@@ -2020,8 +2058,17 @@ export default class Z80 {
       /* CB */ {
 				name: "**** CB ****",
 				exec() {
+          // Read the instruction from the cb table and call that.
+          const opcode = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          z80.reg16[z80.regOffsets16.PC] += 1
+          if(z80.cb_instructions[opcode] && z80.cb_instructions[opcode].unimplemented) {
+            console.log(`Error: unimplemented opcode: 0xCB${opcode.toString(16)}`)
+          }
+          if(z80.cb_instructions[opcode] && !z80.cb_instructions[opcode].exec()) {
+            z80.reg16[z80.regOffsets16.PC] += z80.cb_instructions[opcode].length
+            return true
+          }
 				},
-				unimplemented: true,
 				length: 0
 			 },
       /* CC */ {
@@ -2295,6 +2342,7 @@ export default class Z80 {
 				exec() {
           // Read the instruction from the ed table and call that.
           const opcode = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
+          z80.reg16[z80.regOffsets16.PC] += 1
           if(z80.ed_instructions[opcode] && z80.ed_instructions[opcode].unimplemented) {
             console.log(`Error: unimplemented opcode: 0xED${opcode.toString(16)}`)
           }
@@ -2456,47 +2504,48 @@ export default class Z80 {
 				exec() {
           RLC_R(z80, z80.regOffsets.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 01 */ {
 				name: "RLC C",
 				exec() {
           RLC_R(z80, z80.regOffsets.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 02 */ {
 				name: "RLC D",
 				exec() {
           RLC_R(z80, z80.regOffsets.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 03 */ {
 				name: "RLC E",
 				exec() {
           RLC_R(z80, z80.regOffsets.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 04 */ {
 				name: "RLC H",
 				exec() {
           RLC_R(z80, z80.regOffsets.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 05 */ {
 				name: "RLC L",
 				exec() {
           RLC_R(z80, z80.regOffsets.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 06 */ {
 				name: "RLC (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.mmu.readByte(addr)
           const c = (a & 0x80) >> 7
           const res = (a << 1) | c
@@ -2505,61 +2554,62 @@ export default class Z80 {
           FLAGS_MM0P0M(z80, a, a, res)
           z80.flags.C = c? true : false
 				},
-				length: 2
+				length: 1
 			 },
       /* 07 */ {
 				name: "RLC A",
 				exec() {
           RLC_R(z80, z80.regOffsets.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 08 */ {
 				name: "RRC B",
 				exec() {
           RRC_R(z80, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 09 */ {
 				name: "RRC C",
 				exec() {
           RRC_R(z80, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 0A */ {
 				name: "RRC D",
 				exec() {
           RRC_R(z80, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 0B */ {
 				name: "RRC E",
 				exec() {
           RRC_R(z80, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 0C */ {
 				name: "RRC H",
 				exec() {
           RRC_R(z80, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 0D */ {
 				name: "RRC L",
 				exec() {
           RRC_R(z80, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
-      /* 0D */ {
+      /* 0E */ {
 				name: "RRC (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.mmu.readByte(addr)
           const c = (a & 0x01) << 8
           const res = (a >> 1) | c
@@ -2568,61 +2618,62 @@ export default class Z80 {
           FLAGS_MM0P0M(z80, a, a, res)
           z80.flags.C = c? true : false
 				},
-				length: 2
+				length: 1
 			 },
       /* 0F */ {
 				name: "RRC A",
 				exec() {
           RRC_R(z80, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 10 */ {
 				name: "RL B",
 				exec() {
           RL_R(z80, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 11 */ {
 				name: "RL C",
 				exec() {
           RL_R(z80, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 12 */ {
 				name: "RL D",
 				exec() {
           RL_R(z80, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 13 */ {
 				name: "RL E",
 				exec() {
           RL_R(z80, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 14 */ {
 				name: "RL H",
 				exec() {
           RL_R(z80, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 15 */ {
 				name: "RL L",
 				exec() {
           RL_R(z80, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 16 */ {
 				name: "RL (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.mmu.readByte(addr)
           const c = (z80.flags.C)? 0x01 : 0x00
           const s = a & 0x80
@@ -2632,61 +2683,62 @@ export default class Z80 {
           FLAGS_MM0P0M(z80, a, a, res)
           z80.flags.C = s? true : false
 				},
-				length: 2
+				length: 1
 			 },
       /* 17 */ {
 				name: "RL A",
 				exec() {
           RL_R(z80, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 18 */ {
 				name: "RR B",
 				exec() {
           RR_R(z80, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 19 */ {
 				name: "RR C",
 				exec() {
           RR_R(z80, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 1A */ {
 				name: "RR D",
 				exec() {
           RR_R(z80, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 1B */ {
 				name: "RR E",
 				exec() {
           RR_R(z80, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 1C */ {
 				name: "RR H",
 				exec() {
           RR_R(z80, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 1D */ {
 				name: "RR L",
 				exec() {
           RR_R(z80, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 1E */ {
 				name: "RR (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.mmu.readByte(addr)
           const c = (z80.flags.C)? 0x80 : 0x00
           const s = a & 0x01
@@ -2696,61 +2748,62 @@ export default class Z80 {
           FLAGS_MM0P0M(z80, a, a, res)
           z80.flags.C = s? true : false
 				},
-				length: 2
+				length: 1
 			 },
       /* 1F */ {
 				name: "RR A",
 				exec() {
           RR_R(z80, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 20 */ {
 				name: "SLA B",
 				exec() {
           SLA_R(z80, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 21 */ {
 				name: "SLA C",
 				exec() {
           SLA_R(z80, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 22 */ {
 				name: "SLA D",
 				exec() {
           SLA_R(z80, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 23 */ {
 				name: "SLA E",
 				exec() {
           SLA_R(z80, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 24 */ {
 				name: "SLA H",
 				exec() {
           SLA_R(z80, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 25 */ {
 				name: "SLA L",
 				exec() {
           SLA_R(z80, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 26 */ {
 				name: "SLA (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.mmu.readByte(addr)
           const s = a & 0x80
           const res = (a << 1)
@@ -2759,61 +2812,62 @@ export default class Z80 {
           FLAGS_MM0P0M(z80, a, a, res)
           z80.flags.C = s? true : false
 				},
-				length: 2
+				length: 1
 			 },
       /* 27 */ {
 				name: "SLA A",
 				exec() {
           SLA_R(z80, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 28 */ {
 				name: "SRA B",
 				exec() {
           SRA_R(z80, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 29 */ {
 				name: "SRA C",
 				exec() {
           SRA_R(z80, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 2A */ {
 				name: "SRA D",
 				exec() {
           SRA_R(z80, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 2B */ {
 				name: "SRA E",
 				exec() {
           SRA_R(z80, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 2C */ {
 				name: "SRA H",
 				exec() {
           SRA_R(z80, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 2D */ {
 				name: "SRA L",
 				exec() {
           SRA_R(z80, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 2E */ {
 				name: "SRA (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.mmu.readByte(addr)
           const c = a & 0x01
           const s = a & 0x80
@@ -2823,61 +2877,62 @@ export default class Z80 {
           FLAGS_MM0P0M(z80, a, a, res)
           z80.flags.C = c? true : false
 				},
-				length: 2
+				length: 1
 			 },
       /* 2F */ {
 				name: "SRA A",
 				exec() {
           SRA_R(z80, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 30 */ {
 				name: "SLL B",
 				exec() {
           SLL_R(z80, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 31 */ {
 				name: "SLL C",
 				exec() {
           SLL_R(z80, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 32 */ {
 				name: "SLL D",
 				exec() {
           SLL_R(z80, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 33 */ {
 				name: "SLL E",
 				exec() {
           SLL_R(z80, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 34 */ {
 				name: "SLL H",
 				exec() {
           SLL_R(z80, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 35 */ {
 				name: "SLL L",
 				exec() {
           SLL_R(z80, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 36 */ {
 				name: "SLL (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.mmu.readByte(addr)
           const s = a & 0x80
           const res = (a << 1) | 0x01
@@ -2886,61 +2941,62 @@ export default class Z80 {
           FLAGS_MM0P0M(z80, a, a, res)
           z80.flags.C = s? true : false
 				},
-				length: 2
+				length: 1
 			 },
       /* 37 */ {
 				name: "SLL A",
 				exec() {
           SLL_R(z80, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 38 */ {
 				name: "SRL B",
 				exec() {
           SRL_R(z80, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 39 */ {
 				name: "SRL C",
 				exec() {
           SRL_R(z80, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 3A */ {
 				name: "SRL D",
 				exec() {
           SRL_R(z80, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 3B */ {
 				name: "SRL E",
 				exec() {
           SRL_R(z80, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 3C */ {
 				name: "SRL H",
 				exec() {
           SRL_R(z80, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 3D */ {
 				name: "SRL L",
 				exec() {
           SRL_R(z80, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 3E */ {
 				name: "SRL (HL)",
 				exec() {
-          const addr = z80.reg16[z80.regOffsets16.HL]
+          let addr = z80.reg16[z80.regOffsets16.HL_IX_IY]
+          addr += ADJUST_ADDRESS(z80)
           const a = z80.mmu.readByte(addr)
           const c = a & 0x01
           const res = (a >> 1)
@@ -2949,469 +3005,469 @@ export default class Z80 {
           FLAGS_MM0P0M(z80, a, a, res)
           z80.flags.C = c? true : false
 				},
-				length: 2
+				length: 1
 			 },
       /* 3F */ {
 				name: "SRL A",
 				exec() {
           SRL_R(z80, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 40 */ {
 				name: "BIT 0,B",
 				exec() {
           BIT_B_R(z80, 0, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 41 */ {
 				name: "BIT 0,C",
 				exec() {
           BIT_B_R(z80, 0, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 42 */ {
 				name: "BIT 0,D",
 				exec() {
           BIT_B_R(z80, 0, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 43 */ {
 				name: "BIT 0,E",
 				exec() {
           BIT_B_R(z80, 0, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 44 */ {
 				name: "BIT 0,H",
 				exec() {
           BIT_B_R(z80, 0, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 45 */ {
 				name: "BIT 0,L",
 				exec() {
           BIT_B_R(z80, 0, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 46 */ {
 				name: "BIT 0,(HL)",
 				exec() {
-          BIT_B_AT_RR(z80, 0, z80.regOffsets16.HL)
+          BIT_B_AT_RR(z80, 0, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* 47 */ {
 				name: "BIT 0,A",
 				exec() {
           BIT_B_R(z80, 0, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 48 */ {
 				name: "BIT 1,B",
 				exec() {
           BIT_B_R(z80, 1, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 49 */ {
 				name: "BIT 1,C",
 				exec() {
           BIT_B_R(z80, 1, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 4A */ {
 				name: "BIT 1,D",
 				exec() {
           BIT_B_R(z80, 1, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 4B */ {
 				name: "BIT 1,E",
 				exec() {
           BIT_B_R(z80, 1, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 4C */ {
 				name: "BIT 1,H",
 				exec() {
           BIT_B_R(z80, 1, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 4D */ {
 				name: "BIT 1,L",
 				exec() {
           BIT_B_R(z80, 1, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 4E */ {
 				name: "BIT 1,(HL)",
 				exec() {
-          BIT_B_AT_RR(z80, 1, z80.regOffsets16.HL)
+          BIT_B_AT_RR(z80, 1, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* 4F */ {
 				name: "BIT 1,A",
 				exec() {
           BIT_B_R(z80, 1, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 50 */ {
 				name: "BIT 2,B",
 				exec() {
           BIT_B_R(z80, 2, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 51 */ {
 				name: "BIT 2,C",
 				exec() {
           BIT_B_R(z80, 2, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 52 */ {
 				name: "BIT 2,D",
 				exec() {
           BIT_B_R(z80, 2, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 53 */ {
 				name: "BIT 2,E",
 				exec() {
           BIT_B_R(z80, 2, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 54 */ {
 				name: "BIT 2,H",
 				exec() {
           BIT_B_R(z80, 2, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 55 */ {
 				name: "BIT 2,L",
 				exec() {
           BIT_B_R(z80, 2, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 56 */ {
 				name: "BIT 2,(HL)",
 				exec() {
-          BIT_B_AT_RR(z80, 2, z80.regOffsets16.HL)
+          BIT_B_AT_RR(z80, 2, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* 57 */ {
 				name: "BIT 2,A",
 				exec() {
           BIT_B_R(z80, 2, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 58 */ {
 				name: "BIT 3,B",
 				exec() {
           BIT_B_R(z80, 3, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 59 */ {
 				name: "BIT 3,C",
 				exec() {
           BIT_B_R(z80, 3, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 5A */ {
 				name: "BIT 3,D",
 				exec() {
           BIT_B_R(z80, 3, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 5B */ {
 				name: "BIT 3,E",
 				exec() {
           BIT_B_R(z80, 3, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 5C */ {
 				name: "BIT 3,H",
 				exec() {
           BIT_B_R(z80, 3, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 5D */ {
 				name: "BIT 3,L",
 				exec() {
           BIT_B_R(z80, 3, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 5E */ {
 				name: "BIT 3,(HL)",
 				exec() {
-          BIT_B_AT_RR(z80, 3, z80.regOffsets16.HL)
+          BIT_B_AT_RR(z80, 3, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* 5F */ {
 				name: "BIT 3,A",
 				exec() {
           BIT_B_R(z80, 3, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 60 */ {
 				name: "BIT 4,B",
 				exec() {
           BIT_B_R(z80, 4, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 61 */ {
 				name: "BIT 4,C",
 				exec() {
           BIT_B_R(z80, 4, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 62 */ {
 				name: "BIT 4,D",
 				exec() {
           BIT_B_R(z80, 4, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 63 */ {
 				name: "BIT 4,E",
 				exec() {
           BIT_B_R(z80, 4, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 64 */ {
 				name: "BIT 4,H",
 				exec() {
           BIT_B_R(z80, 4, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 65 */ {
 				name: "BIT 4,L",
 				exec() {
           BIT_B_R(z80, 4, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 66 */ {
 				name: "BIT 4,(HL)",
 				exec() {
-          BIT_B_AT_RR(z80, 4, z80.regOffsets16.HL)
+          BIT_B_AT_RR(z80, 4, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* 67 */ {
 				name: "BIT 4,A",
 				exec() {
           BIT_B_R(z80, 4, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 68 */ {
 				name: "BIT 5,B",
 				exec() {
           BIT_B_R(z80, 5, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 69 */ {
 				name: "BIT 5,C",
 				exec() {
           BIT_B_R(z80, 5, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 6A */ {
 				name: "BIT 5,D",
 				exec() {
           BIT_B_R(z80, 5, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 6B */ {
 				name: "BIT 5,E",
 				exec() {
           BIT_B_R(z80, 5, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 6C */ {
 				name: "BIT 5,H",
 				exec() {
           BIT_B_R(z80, 5, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 6D */ {
 				name: "BIT 5,L",
 				exec() {
           BIT_B_R(z80, 5, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 6E */ {
 				name: "BIT 5,(HL)",
 				exec() {
-          BIT_B_AT_RR(z80, 5, z80.regOffsets16.HL)
+          BIT_B_AT_RR(z80, 5, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* 6F */ {
 				name: "BIT 5,A",
 				exec() {
           BIT_B_R(z80, 5, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 70 */ {
 				name: "BIT 6,B",
 				exec() {
           BIT_B_R(z80, 6, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 71 */ {
 				name: "BIT 6,C",
 				exec() {
           BIT_B_R(z80, 6, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 72 */ {
 				name: "BIT 6,D",
 				exec() {
           BIT_B_R(z80, 6, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 73 */ {
 				name: "BIT 6,E",
 				exec() {
           BIT_B_R(z80, 6, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 74 */ {
 				name: "BIT 6,H",
 				exec() {
           BIT_B_R(z80, 6, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 75 */ {
 				name: "BIT 6,L",
 				exec() {
           BIT_B_R(z80, 6, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 76 */ {
 				name: "BIT 6,(HL)",
 				exec() {
-          BIT_B_AT_RR(z80, 6, z80.regOffsets16.HL)
+          BIT_B_AT_RR(z80, 6, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* 77 */ {
 				name: "BIT 6,A",
 				exec() {
           BIT_B_R(z80, 6, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 78 */ {
 				name: "BIT 7,B",
 				exec() {
           BIT_B_R(z80, 7, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 79 */ {
 				name: "BIT 7,C",
 				exec() {
           BIT_B_R(z80, 7, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 7A */ {
 				name: "BIT 7,D",
 				exec() {
           BIT_B_R(z80, 7, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 7B */ {
 				name: "BIT 7,E",
 				exec() {
           BIT_B_R(z80, 7, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 7C */ {
 				name: "BIT 7,H",
 				exec() {
           BIT_B_R(z80, 7, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 7D */ {
 				name: "BIT 7,L",
 				exec() {
           BIT_B_R(z80, 7, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 7E */ {
 				name: "BIT 7,(HL)",
 				exec() {
-          BIT_B_AT_RR(z80, 7, z80.regOffsets16.HL)
+          BIT_B_AT_RR(z80, 7, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* 7F */ {
 				name: "BIT 7,A",
 				exec() {
           BIT_B_R(z80, 7, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 80 */ {
 				name: "RES 0,B",
 				exec() {
           RES_B_R(z80, 0, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 81 */ {
 				name: "RES 0,C",
@@ -3425,882 +3481,882 @@ export default class Z80 {
 				exec() {
           RES_B_R(z80, 0, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 83 */ {
 				name: "RES 0,E",
 				exec() {
           RES_B_R(z80, 0, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 84 */ {
 				name: "RES 0,H",
 				exec() {
           RES_B_R(z80, 0, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 85 */ {
 				name: "RES 0,L",
 				exec() {
           RES_B_R(z80, 0, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 86 */ {
 				name: "RES 0,(HL)",
 				exec() {
-          RES_B_AT_RR(z80, 0, z80.regOffsets16.HL)
+          RES_B_AT_RR(z80, 0, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* 87 */ {
 				name: "RES 0,A",
 				exec() {
           RES_B_R(z80, 0, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 88 */ {
 				name: "RES 1,B",
 				exec() {
           RES_B_R(z80, 1, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 89 */ {
 				name: "RES 1,C",
 				exec() {
           RES_B_R(z80, 1, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 8A */ {
 				name: "RES 1,D",
 				exec() {
           RES_B_R(z80, 1, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 8B */ {
 				name: "RES 1,E",
 				exec() {
           RES_B_R(z80, 1, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 8C */ {
 				name: "RES 1,H",
 				exec() {
           RES_B_R(z80, 1, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 8D */ {
 				name: "RES 1,L",
 				exec() {
           RES_B_R(z80, 1, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 8E */ {
 				name: "RES 1,(HL)",
 				exec() {
-          RES_B_AT_RR(z80, 1, z80.regOffsets16.HL)
+          RES_B_AT_RR(z80, 1, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* 8F */ {
 				name: "RES 1,A",
 				exec() {
           RES_B_R(z80, 1, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 90 */ {
 				name: "RES 2,B",
 				exec() {
           RES_B_R(z80, 2, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 91 */ {
 				name: "RES 2,C",
 				exec() {
           RES_B_R(z80, 2, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 92 */ {
 				name: "RES 2,D",
 				exec() {
           RES_B_R(z80, 2, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 93 */ {
 				name: "RES 2,E",
 				exec() {
           RES_B_R(z80, 2, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 94 */ {
 				name: "RES 2,H",
 				exec() {
           RES_B_R(z80, 2, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 95 */ {
 				name: "RES 2,L",
 				exec() {
           RES_B_R(z80, 2, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 96 */ {
 				name: "RES 2,(HL)",
 				exec() {
-          RES_B_AT_RR(z80, 1, z80.regOffsets16.HL)
+          RES_B_AT_RR(z80, 1, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* 97 */ {
 				name: "RES 2,A",
 				exec() {
           RES_B_R(z80, 2, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* 98 */ {
 				name: "RES 3,B",
 				exec() {
           RES_B_R(z80, 3, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* 99 */ {
 				name: "RES 3,C",
 				exec() {
           RES_B_R(z80, 3, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* 9A */ {
 				name: "RES 3,D",
 				exec() {
           RES_B_R(z80, 3, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* 9B */ {
 				name: "RES 3,E",
 				exec() {
           RES_B_R(z80, 3, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* 9C */ {
 				name: "RES 3,H",
 				exec() {
           RES_B_R(z80, 3, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* 9D */ {
 				name: "RES 3,L",
 				exec() {
           RES_B_R(z80, 3, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* 9E */ {
 				name: "RES 3,(HL)",
 				exec() {
-          RES_B_AT_RR(z80, 3, z80.regOffsets16.HL)
+          RES_B_AT_RR(z80, 3, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* 9F */ {
 				name: "RES 3,A",
 				exec() {
           RES_B_R(z80, 3, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* A0 */ {
 				name: "RES 4,B",
 				exec() {
           RES_B_R(z80, 4, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* A1 */ {
 				name: "RES 4,C",
 				exec() {
           RES_B_R(z80, 4, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* A2 */ {
 				name: "RES 4,D",
 				exec() {
           RES_B_R(z80, 4, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* A3 */ {
 				name: "RES 4,E",
 				exec() {
           RES_B_R(z80, 4, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* A4 */ {
 				name: "RES 4,H",
 				exec() {
           RES_B_R(z80, 4, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* A5 */ {
 				name: "RES 4,L",
 				exec() {
           RES_B_R(z80, 4, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* A6 */ {
 				name: "RES 4,(HL)",
 				exec() {
-          RES_B_AT_RR(z80, 4, z80.regOffsets16.HL)
+          RES_B_AT_RR(z80, 4, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* A7 */ {
 				name: "RES 4,A",
 				exec() {
           RES_B_R(z80, 4, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* A8 */ {
 				name: "RES 5,B",
 				exec() {
           RES_B_R(z80, 5, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* A9 */ {
 				name: "RES 5,C",
 				exec() {
           RES_B_R(z80, 5, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* AA */ {
 				name: "RES 5,D",
 				exec() {
           RES_B_R(z80, 5, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* AB */ {
 				name: "RES 5,E",
 				exec() {
           RES_B_R(z80, 5, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* AC */ {
 				name: "RES 5,H",
 				exec() {
           RES_B_R(z80, 5, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* AD */ {
 				name: "RES 5,L",
 				exec() {
           RES_B_R(z80, 5, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* AE */ {
 				name: "RES 5,(HL)",
 				exec() {
-          RES_B_AT_RR(z80, 5, z80.regOffsets16.HL)
+          RES_B_AT_RR(z80, 5, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* AF */ {
 				name: "RES 5,A",
 				exec() {
           RES_B_R(z80, 5, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* B0 */ {
 				name: "RES 6,B",
 				exec() {
           RES_B_R(z80, 6, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* B1 */ {
 				name: "RES 6,C",
 				exec() {
           RES_B_R(z80, 6, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* B2 */ {
 				name: "RES 6,D",
 				exec() {
           RES_B_R(z80, 6, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* B3 */ {
 				name: "RES 6,E",
 				exec() {
           RES_B_R(z80, 6, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* B4 */ {
 				name: "RES 6,H",
 				exec() {
           RES_B_R(z80, 6, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* B5 */ {
 				name: "RES 6,L",
 				exec() {
           RES_B_R(z80, 6, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* B6 */ {
 				name: "RES 6,(HL)",
 				exec() {
-          RES_B_AT_RR(z80, 6, z80.regOffsets16.HL)
+          RES_B_AT_RR(z80, 6, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* B7 */ {
 				name: "RES 6,A",
 				exec() {
           RES_B_R(z80, 6, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* B8 */ {
 				name: "RES 7,B",
 				exec() {
           RES_B_R(z80, 7, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* B9 */ {
 				name: "RES 7,C",
 				exec() {
           RES_B_R(z80, 7, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* BA */ {
 				name: "RES 7,D",
 				exec() {
           RES_B_R(z80, 7, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* BB */ {
 				name: "RES 7,E",
 				exec() {
           RES_B_R(z80, 7, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* BC */ {
 				name: "RES 7,H",
 				exec() {
           RES_B_R(z80, 7, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* BD */ {
 				name: "RES 7,L",
 				exec() {
           RES_B_R(z80, 7, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* BE */ {
 				name: "RES 7,(HL)",
 				exec() {
-          RES_B_AT_RR(z80, 7, z80.regOffsets16.HL)
+          RES_B_AT_RR(z80, 7, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* BF */ {
 				name: "RES 7,A",
 				exec() {
           RES_B_R(z80, 7, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* C0 */ {
 				name: "SET 0,B",
 				exec() {
           SET_B_R(z80, 0, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* C1 */ {
 				name: "SET 0,C",
 				exec() {
           SET_B_R(z80, 0, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* C2 */ {
 				name: "SET 0,D",
 				exec() {
           SET_B_R(z80, 0, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* C3 */ {
 				name: "SET 0,E",
 				exec() {
           SET_B_R(z80, 0, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* C4 */ {
 				name: "SET 0,H",
 				exec() {
           SET_B_R(z80, 0, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* C5 */ {
 				name: "SET 0,L",
 				exec() {
           SET_B_R(z80, 0, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* C6 */ {
 				name: "SET 0,(HL)",
 				exec() {
-          SET_B_AT_RR(z80, 0, z80.regOffsets16.HL)
+          SET_B_AT_RR(z80, 0, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* C7 */ {
 				name: "SET 0,A",
 				exec() {
           SET_B_R(z80, 0, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* C8 */ {
 				name: "SET 1,B",
 				exec() {
           SET_B_R(z80, 1, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* C9 */ {
 				name: "SET 1,C",
 				exec() {
           SET_B_R(z80, 1, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* CA */ {
 				name: "SET 1,D",
 				exec() {
           SET_B_R(z80, 1, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* CB */ {
 				name: "SET 1,E",
 				exec() {
           SET_B_R(z80, 1, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* CC */ {
 				name: "SET 1,H",
 				exec() {
           SET_B_R(z80, 1, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* CD */ {
 				name: "SET 1,L",
 				exec() {
           SET_B_R(z80, 1, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* CE */ {
 				name: "SET 1,(HL)",
 				exec() {
-          SET_B_AT_RR(z80, 1, z80.regOffsets16.HL)
+          SET_B_AT_RR(z80, 1, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* CF */ {
 				name: "SET 1,A",
 				exec() {
           SET_B_R(z80, 1, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* D0 */ {
 				name: "SET 2,B",
 				exec() {
           SET_B_R(z80, 2, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* D1 */ {
 				name: "SET 2,C",
 				exec() {
           SET_B_R(z80, 2, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* D2 */ {
 				name: "SET 2,D",
 				exec() {
           SET_B_R(z80, 2, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* D3 */ {
 				name: "SET 2,E",
 				exec() {
           SET_B_R(z80, 2, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* D4 */ {
 				name: "SET 2,H",
 				exec() {
           SET_B_R(z80, 2, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* D5 */ {
 				name: "SET 2,L",
 				exec() {
           SET_B_R(z80, 2, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* D6 */ {
 				name: "SET 2,(HL)",
 				exec() {
-          SET_B_AT_RR(z80, 2, z80.regOffsets16.HL)
+          SET_B_AT_RR(z80, 2, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* D7 */ {
 				name: "SET 2,A",
 				exec() {
           SET_B_R(z80, 2, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* D8 */ {
 				name: "SET 3,B",
 				exec() {
           SET_B_R(z80, 3, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* D9 */ {
 				name: "SET 3,C",
 				exec() {
           SET_B_R(z80, 3, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* DA */ {
 				name: "SET 3,D",
 				exec() {
           SET_B_R(z80, 3, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* DB */ {
 				name: "SET 3,E",
 				exec() {
           SET_B_R(z80, 3, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* DC */ {
 				name: "SET 3,H",
 				exec() {
           SET_B_R(z80, 3, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* DD */ {
 				name: "SET 3,L",
 				exec() {
           SET_B_R(z80, 3, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* DE */ {
 				name: "SET 3,(HL)",
 				exec() {
-          SET_B_AT_RR(z80, 3, z80.regOffsets16.HL)
+          SET_B_AT_RR(z80, 3, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* DF */ {
 				name: "SET 3,A",
 				exec() {
           SET_B_R(z80, 3, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* E0 */ {
 				name: "SET 4,B",
 				exec() {
           SET_B_R(z80, 4, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* E1 */ {
 				name: "SET 4,C",
 				exec() {
           SET_B_R(z80, 4, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* E2 */ {
 				name: "SET 4,D",
 				exec() {
           SET_B_R(z80, 4, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* E3 */ {
 				name: "SET 4,E",
 				exec() {
           SET_B_R(z80, 4, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* E4 */ {
 				name: "SET 4,H",
 				exec() {
           SET_B_R(z80, 4, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* E5 */ {
 				name: "SET 4,L",
 				exec() {
           SET_B_R(z80, 4, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* E6 */ {
 				name: "SET 4,(HL)",
 				exec() {
-          SET_B_AT_RR(z80, 4, z80.regOffsets16.HL)
+          SET_B_AT_RR(z80, 4, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* E7 */ {
 				name: "SET 4,A",
 				exec() {
           SET_B_R(z80, 4, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* E8 */ {
 				name: "SET 5,B",
 				exec() {
           SET_B_R(z80, 5, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* E9 */ {
 				name: "SET 5,C",
 				exec() {
           SET_B_R(z80, 5, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* EA */ {
 				name: "SET 5,D",
 				exec() {
           SET_B_R(z80, 5, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* EB */ {
 				name: "SET 5,E",
 				exec() {
           SET_B_R(z80, 5, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* EC */ {
 				name: "SET 5,H",
 				exec() {
           SET_B_R(z80, 5, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* ED */ {
 				name: "SET 5,L",
 				exec() {
           SET_B_R(z80, 5, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* EE */ {
 				name: "SET 5,(HL)",
 				exec() {
-          SET_B_AT_RR(z80, 5, z80.regOffsets16.HL)
+          SET_B_AT_RR(z80, 5, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* EF */ {
 				name: "SET 5,A",
 				exec() {
           SET_B_R(z80, 5, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* F0 */ {
 				name: "SET 6,B",
 				exec() {
           SET_B_R(z80, 6, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* F1 */ {
 				name: "SET 6,C",
 				exec() {
           SET_B_R(z80, 6, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* F2 */ {
 				name: "SET 6,D",
 				exec() {
           SET_B_R(z80, 6, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* F3 */ {
 				name: "SET 6,E",
 				exec() {
           SET_B_R(z80, 6, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* F4 */ {
 				name: "SET 6,H",
 				exec() {
           SET_B_R(z80, 6, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* F5 */ {
 				name: "SET 6,L",
 				exec() {
           SET_B_R(z80, 6, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* F6 */ {
 				name: "SET 6,(HL)",
 				exec() {
-          SET_B_AT_RR(z80, 6, z80.regOffsets16.HL)
+          SET_B_AT_RR(z80, 6, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* F7 */ {
 				name: "SET 6,A",
 				exec() {
           SET_B_R(z80, 6, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
       /* F8 */ {
 				name: "SET 7,B",
 				exec() {
           SET_B_R(z80, 7, z80.regOffsets8.B)
 				},
-				length: 2
+				length: 1
 			 },
       /* F9 */ {
 				name: "SET 7,C",
 				exec() {
           SET_B_R(z80, 7, z80.regOffsets8.C)
 				},
-				length: 2
+				length: 1
 			 },
       /* FA */ {
 				name: "SET 7,D",
 				exec() {
           SET_B_R(z80, 7, z80.regOffsets8.D)
 				},
-				length: 2
+				length: 1
 			 },
       /* FB */ {
 				name: "SET 7,E",
 				exec() {
           SET_B_R(z80, 7, z80.regOffsets8.E)
 				},
-				length: 2
+				length: 1
 			 },
       /* FC */ {
 				name: "SET 7,H",
 				exec() {
           SET_B_R(z80, 7, z80.regOffsets8.H)
 				},
-				length: 2
+				length: 1
 			 },
       /* FD */ {
 				name: "SET 7,L",
 				exec() {
           SET_B_R(z80, 7, z80.regOffsets8.L)
 				},
-				length: 2
+				length: 1
 			 },
       /* FE */ {
 				name: "SET 7,(HL)",
 				exec() {
-          SET_B_AT_RR(z80, 7, z80.regOffsets16.HL)
+          SET_B_AT_RR(z80, 7, z80.regOffsets16.HL_IX_IY)
 				},
-				length: 2
+				length: 1
 			 },
       /* FF */ {
 				name: "SET 7,A",
 				exec() {
           SET_B_R(z80, 7, z80.regOffsets8.A)
 				},
-				length: 2
+				length: 1
 			 },
     ]
 
@@ -4330,7 +4386,7 @@ export default class Z80 {
               break
           }
 				},
-				length: 2
+				length: 1
 			 },
       /* 01 */ null,
       /* 02 */ null,
@@ -4400,441 +4456,441 @@ export default class Z80 {
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 41 */ {
 				name: "OUT (C),B",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 42 */ {
 				name: "SBC HL,BC",
 				exec() {
           SBC_RR_RR(z80, z80.regOffsets16.HL, z80.regOffsets16.BC)
 				},
-				length: 2
+				length: 1
 			 },
       /* 43 */ {
 				name: "LD (\\2\\1H),BC",
 				exec() {
           LD_TO_NNNN_RR(z80, z80.regOffsets16.BC)
 				},
-				length: 4
+				length: 3
 			 },
       /* 44 */ {
 				name: "NEG",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 45 */ {
 				name: "RETN",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 46 */ {
 				name: "IM 0",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 47 */ {
 				name: "LD I,A",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 48 */ {
 				name: "IN C,(C)",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 49 */ {
 				name: "OUT (C),C",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 4A */ {
 				name: "ADC HL,BC",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 4B */ {
         name: "LD BC,(\\2\\1H)",
         exec() {
           LD_RR_FROM_NNNN(z80, z80.regOffsets16.BC)
         },
-        length: 4
+        length: 3
       },
       /* 4C */ {
 				name: "NEG",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 4D */ {
 				name: "RETI",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 4E */ {
 				name: "IM 0/1",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 4F */ {
 				name: "LD R,A",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 50 */ {
 				name: "IN D,(C)",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 51 */ {
 				name: "OUT (C),D",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 52 */ {
 				name: "SBC HL,DE",
 				exec() {
           SBC_RR_RR(z80, z80.regOffsets16.HL, z80.regOffsets16.DE)
 				},
-				length: 2
+				length: 1
 			 },
       /* 53 */ {
 				name: "LD (\\2\\1H),DE",
 				exec() {
           LD_TO_NNNN_RR(z80, z80.regOffsets16.DE)
 				},
-				length: 4
+				length: 3
 			 },
       /* 54 */ {
 				name: "NEG",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 55 */ {
 				name: "RETN",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 56 */ {
 				name: "IM 1",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 57 */ {
 				name: "LD A,I",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 58 */ {
 				name: "IN E,(C)",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 59 */ {
 				name: "OUT (C),E",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 5A */ {
 				name: "ADC HL,DE",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 5B */ {
         name: "LD DE,(\\2\\1H)",
         exec() {
           LD_RR_FROM_NNNN(z80, z80.regOffsets16.DE)
         },
-        length: 4
+        length: 3
       },
       /* 5C */ {
 				name: "NEG",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 5D */ {
 				name: "RETN",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 5E */ {
 				name: "IM 2",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 5F */ {
 				name: "LD A,R",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 60 */ {
 				name: "IN H,(C)",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 61 */ {
 				name: "OUT (C),H",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 62 */ {
 				name: "SBC HL,HL",
 				exec() {
           SBC_RR_RR(z80, z80.regOffsets16.HL, z80.regOffsets16.HL)
 				},
-				length: 2
+				length: 1
 			 },
       /* 63 */ {
 				name: "LD (\\2\\1H),HL",
 				exec() {
           LD_TO_NNNN_RR(z80, z80.regOffsets16.HL)
 				},
-				length: 4
+				length: 3
 			 },
       /* 64 */ {
 				name: "NEG",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 65 */ {
 				name: "RETN",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 66 */ {
 				name: "IM 0",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 67 */ {
 				name: "RRD",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 68 */ {
 				name: "IN L,(C)",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 69 */ {
 				name: "OUT (C),L",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 6A */ {
 				name: "ADC HL,HL",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 6B */ {
         name: "LD HL,(\\2\\1H)",
         exec() {
           LD_RR_FROM_NNNN(z80, z80.regOffsets16.HL)
         },
-        length: 4
+        length: 3
       },
       /* 6C */ {
 				name: "NEG",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 6D */ {
 				name: "RETN",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 6E */ {
 				name: "IM 0/1",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 6F */ {
 				name: "RLD",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 70 */ {
 				name: "IN F,(C) / IN (C)",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 71 */ {
 				name: "OUT (C),0",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 72 */ {
 				name: "SBC HL,SP",
 				exec() {
           SBC_RR_RR(z80, z80.regOffsets16.HL, z80.regOffsets16.SP)
 				},
-				length: 2
+				length: 1
 			 },
       /* 73 */ {
 				name: "LD (\\2\\1H),SP",
 				exec() {
           LD_TO_NNNN_RR(z80, z80.regOffsets16.SP)
 				},
-				length: 4
+				length: 3
 			 },
       /* 74 */ {
 				name: "NEG",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 75 */ {
 				name: "RETN",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 76 */ {
 				name: "IM 1",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 77 */ {
 				name: "",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 78 */ {
 				name: "IN A,(C)",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 79 */ {
 				name: "OUT (C),A",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 7A */ {
 				name: "ADC HL,SP",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 7B */ {
         name: "LD SP,(\\2\\1H)",
         exec() {
           LD_RR_FROM_NNNN(z80, z80.regOffsets16.SP)
         },
-        length: 4
+        length: 3
       },
       /* 7C */ {
 				name: "NEG",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 7D */ {
 				name: "RETN",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 7E */ {
 				name: "IM 2",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* 7F */ null,
       /* 80 */ null,
@@ -4874,28 +4930,28 @@ export default class Z80 {
 				exec() {
           LDI(z80)
 				},
-				length: 2
+				length: 1
 			 },
       /* A1 */ {
 				name: "CPI",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* A2 */ {
 				name: "INI",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* A3 */ {
 				name: "OUTI",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* A4 */ null,
       /* A5 */ null,
@@ -4906,28 +4962,28 @@ export default class Z80 {
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* A9 */ {
 				name: "CPD",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* AA */ {
 				name: "IND",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* AB */ {
 				name: "OUTD",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* AC */ null,
       /* AD */ null,
@@ -4941,28 +4997,28 @@ export default class Z80 {
           } while(!z80.flags.P)
           z80.flags.P = false
 				},
-				length: 2
+				length: 1
 			 },
       /* B1 */ {
 				name: "CPIR",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* B2 */ {
 				name: "INIR",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* B3 */ {
 				name: "OTIR",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* B4 */ null,
       /* B5 */ null,
@@ -4973,28 +5029,28 @@ export default class Z80 {
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* B9 */ {
 				name: "CPDR",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* BA */ {
 				name: "INDR",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* BB */ {
 				name: "OTDR",
 				exec() {
 				},
 				unimplemented: true,
-				length: 2
+				length: 1
 			 },
       /* BC */ null,
       /* BD */ null,

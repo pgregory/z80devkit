@@ -15,9 +15,10 @@ const z80 = new Z80(mmu)
 const code = new Uint8Array(zexall)
 mmu.copyFrom(code, 0x100)
 
-/*mmu.writeByte(0x0005, 0xED)
+// Simple CP/M routines.
+mmu.writeByte(0x0005, 0xED)
 mmu.writeByte(0x0006, 0x00)
-mmu.writeByte(0x0007, 0xC9)*/
+mmu.writeByte(0x0007, 0xC9)
 
 /*mmu.writeByte(0x100, 0x3E)
 mmu.writeByte(0x101, 0x04)
