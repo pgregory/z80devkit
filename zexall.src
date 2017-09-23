@@ -108,6 +108,9 @@ done:	ld	de,msg2
 	jp	0		; warm boot
 
 tests:
+	dw	inca
+	dw	0
+
 	dw	adc16
 	dw	add16
 	dw	add16x
@@ -195,7 +198,7 @@ lab:	db	insn1,insn2,insn3,insn4
 
 tmsg	macro	msg
   local lab
-lab:	db	'msg'
+lab:	db	msg
 	if	$ ge lab+31
 	error	'message too long'
 	else
@@ -773,7 +776,7 @@ stt:	push	hl
 	ld	de,msbt		; copy initial machine state
 	ld	bc,16
 	ldir
-	ld	de,20+20+4	; skip incmask, scanmask and expcrc
+	ld	de,20+20+20+4	; skip incmask, scanmask and expcrc
 	add	hl,de
 	ex	de,hl
 	ld	c,9

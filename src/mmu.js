@@ -18,6 +18,11 @@ export default class MMU {
     this.memory[address] = value 
   }
 
+  writeWord(address, value) {
+    this.memory[address] = value & 0xFF
+    this.memory[address + 1] = value >>> 8
+  }
+
   copyFrom(source, offset) {
     this.memory.set(source, offset)
   }

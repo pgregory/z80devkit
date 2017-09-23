@@ -4,6 +4,7 @@ import update from 'immutability-helper'
 import Registers from './Registers.jsx'
 import Flags from './Flags.jsx'
 import Disassembly from './Disassembly.jsx'
+import Stack from './Stack.jsx'
 
 class App extends React.Component {
   constructor(props) {
@@ -16,7 +17,11 @@ class App extends React.Component {
       z80: this.props.z80,
     }
 
-    this.handleClick = this.handleClick.bind(this)
+    this.handleStep = this.handleStep.bind(this)
+    this.handleRun = this.handleRun.bind(this)
+    this.runStep = this.runStep.bind(this)
+
+    this.timer = null
   }
 
   getRegisters() {
@@ -38,7 +43,26 @@ class App extends React.Component {
     }
   }
 
-  handleClick(e) {
+  handleStep(e) {
+    this.props.z80.stepExecution()
+    this.setState(prevState => ({
+      registers: update(prevState.registers, {$set: this.getRegisters()}),
+      flags: update(prevState.flags, {$set: this.props.z80.flags}),
+    }))
+  }
+
+  handleRun(e) {
+    if(this.timer !== null) {
+      // Stop execution
+      clearInterval(this.timer)
+      this.timer = null
+    } else {
+      // Start execution
+      this.timer = setInterval(this.runStep, 5)
+    }
+  }
+  
+  runStep() {
     this.props.z80.stepExecution()
     this.setState(prevState => ({
       registers: update(prevState.registers, {$set: this.getRegisters()}),
@@ -67,10 +91,17 @@ class App extends React.Component {
           <div style={regStyle}>
             <Flags flags={this.state.flags} altFlags={this.state.altFlags}/>
           </div>
-          <button onClick={this.handleClick}>Step</button>
+          <button onClick={this.handleStep}>Step</button>
+          <button onClick={this.handleRun}>Run</button>
         </div>
         <div style={columnStyle}>
           <Disassembly address={this.state.registers.PC} z80={this.state.z80}/>
+        </div>
+        <div style={columnStyle}>
+          <Stack address={this.state.registers.SP} z80={this.state.z80}/>
+        </div>
+        <div style={columnStyle}>
+          <Stack address={this.state.registers.HL} z80={this.state.z80}/>
         </div>
       </div>
     )
