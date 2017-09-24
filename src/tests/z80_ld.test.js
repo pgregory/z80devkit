@@ -3,40 +3,42 @@ import MMU from '../mmu.js'
 
 import assert from 'assert'
 
-describe('LD', function() {
-  describe('LD A,n', function() {
-    let mmu
-    let z80
-    let initFlags
-    beforeEach(function() {
-      mmu = new MMU()
-      z80 = new Z80(mmu)
-      mmu.writeByte(0, 0x3e)
-      mmu.writeByte(1, 0x77)
-      // Record the flag state
-      initFlags = Object.assign({}, z80.flags)
-      z80.reg16[z80.regOffsets16.PC] = 0
-      z80.stepExecution()
-    })
+function checkFlags(init, current) {
+  assert.equal(init.S, current.S)
+  assert.equal(init.Z, current.Z)
+  assert.equal(init.Y, current.Y)
+  assert.equal(init.H, current.H)
+  assert.equal(init.X, current.X)
+  assert.equal(init.P, current.P)
+  assert.equal(init.N, current.N)
+  assert.equal(init.C, current.C)
+}
 
-    it('should set the register value', function() {
-      assert.equal(0x77, z80.reg8[z80.regOffsets8.A])
-    })
-    it('should truncate out of range values', function() {
-      z80.mmu.writeByte(1, 0xBBB)
+describe('LD', function() {
+  let mmu
+  let z80
+  let initFlags
+  beforeEach(function() {
+    mmu = new MMU()
+    z80 = new Z80(mmu)
+    initFlags = Object.assign({}, z80.flags)
+  })
+
+  describe('LD B,A', function() {
+    beforeEach(function() {
+      const code = new Uint8Array([
+        0x47,
+      ])
+      mmu.copyFrom(code, 0)
       z80.reg16[z80.regOffsets16.PC] = 0
+      z80.reg8[z80.regOffsets8.A] = 0x12
       z80.stepExecution()
-      assert.equal(0xBB, z80.reg8[z80.regOffsets8.A])
     })
-    it('should not modify the flags at all', function() {
-      assert.equal(initFlags.S, z80.flags.S)
-      assert.equal(initFlags.Z, z80.flags.Z)
-      assert.equal(initFlags.Y, z80.flags.Y)
-      assert.equal(initFlags.H, z80.flags.H)
-      assert.equal(initFlags.X, z80.flags.X)
-      assert.equal(initFlags.P, z80.flags.P)
-      assert.equal(initFlags.N, z80.flags.N)
-      assert.equal(initFlags.C, z80.flags.C)
+    it('should set register B to the value of A', function() {
+      assert.equal(0x12, z80.reg8[z80.regOffsets8.B])
+    })
+    it('should leave the flags untouched', function() {
+      checkFlags(initFlags, z80.flags)
     })
   })
 })
