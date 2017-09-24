@@ -5122,29 +5122,31 @@ export default class Z80 {
       /* FF */ null,
     ]
 
-    let unimplemented = 0
-    let total = 0
-    for(let i = 0; i < this.instructions.length; i += 1) {
-      total += 1
-      if(this.instructions[i].unimplemented) {
-        unimplemented += 1;
-      }
-    }
-    for(let i = 0; i < this.cb_instructions.length; i += 1) {
-      total += 1
-      if(this.cb_instructions[i].unimplemented) {
-        unimplemented += 1;
-      }
-    }
-    for(let i = 0; i < this.ed_instructions.length; i += 1) {
-      if(this.ed_instructions[i]) {
+    if(process.env.NODE_ENV === 'DEV') {
+      let unimplemented = 0
+      let total = 0
+      for(let i = 0; i < this.instructions.length; i += 1) {
         total += 1
-        if(this.ed_instructions[i].unimplemented) {
+        if(this.instructions[i].unimplemented) {
           unimplemented += 1;
         }
       }
+      for(let i = 0; i < this.cb_instructions.length; i += 1) {
+        total += 1
+        if(this.cb_instructions[i].unimplemented) {
+          unimplemented += 1;
+        }
+      }
+      for(let i = 0; i < this.ed_instructions.length; i += 1) {
+        if(this.ed_instructions[i]) {
+          total += 1
+          if(this.ed_instructions[i].unimplemented) {
+            unimplemented += 1;
+          }
+        }
+      }
+      console.log(`${total-unimplemented}/${total} (${unimplemented}) ${Math.round((100.0/total)*(total-unimplemented))}%`);
     }
-    console.log(`${total-unimplemented}/${total} (${unimplemented}) ${Math.round((100.0/total)*(total-unimplemented))}%`);
 
     this.registers = new ArrayBuffer(26)
     this.reg16 = new Uint16Array(this.registers)

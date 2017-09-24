@@ -4,7 +4,7 @@
   "description": "Browser based Z80 development kit",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "mocha-webpack --webpack-config webpack.test.js \"src/**/*.test.js\"",
     "watch": "webpack --progress --watch",
     "start": "webpack-dev-server --open --config webpack.dev.js",
     "build": "webpack --config webpack.prod.js"
@@ -22,10 +22,13 @@
     "css-loader": "^0.28.7",
     "file-loader": "^0.11.2",
     "html-webpack-plugin": "^2.30.1",
+    "mocha": "^3.5.3",
+    "mocha-webpack": "^0.7.0",
     "style-loader": "^0.18.2",
     "webpack": "^3.5.6",
     "webpack-dev-server": "^2.8.2",
-    "webpack-merge": "^4.1.0"
+    "webpack-merge": "^4.1.0",
+    "webpack-node-externals": "^1.6.0"
   },
   "dependencies": {
     "immutability-helper": "^2.3.1",
