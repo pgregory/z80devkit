@@ -3,42 +3,122 @@ import MMU from '../mmu.js'
 
 import assert from 'assert'
 
-function checkFlags(init, current) {
-  assert.equal(init.S, current.S)
-  assert.equal(init.Z, current.Z)
-  assert.equal(init.Y, current.Y)
-  assert.equal(init.H, current.H)
-  assert.equal(init.X, current.X)
-  assert.equal(init.P, current.P)
-  assert.equal(init.N, current.N)
-  assert.equal(init.C, current.C)
+const shouldNotAlterFlags = function() {
+  it('should not alter flags', function() {
+    assert.equal(this.initFlags.S, this.z80.flags.S)
+    assert.equal(this.initFlags.Z, this.z80.flags.Z)
+    assert.equal(this.initFlags.Y, this.z80.flags.Y)
+    assert.equal(this.initFlags.H, this.z80.flags.H)
+    assert.equal(this.initFlags.X, this.z80.flags.X)
+    assert.equal(this.initFlags.P, this.z80.flags.P)
+    assert.equal(this.initFlags.N, this.z80.flags.N)
+    assert.equal(this.initFlags.C, this.z80.flags.C)
+  })
 }
 
 describe('LD', function() {
-  let mmu
-  let z80
-  let initFlags
   beforeEach(function() {
-    mmu = new MMU()
-    z80 = new Z80(mmu)
-    initFlags = Object.assign({}, z80.flags)
+    this.mmu = new MMU()
+    this.z80 = new Z80(this.mmu)
   })
 
-  describe('LD B,A', function() {
+  describe('LD r,A', function() {
+
     beforeEach(function() {
-      const code = new Uint8Array([
-        0x47,
-      ])
-      mmu.copyFrom(code, 0)
-      z80.reg16[z80.regOffsets16.PC] = 0
-      z80.reg8[z80.regOffsets8.A] = 0x12
-      z80.stepExecution()
+      this.z80.reg16[this.z80.regOffsets16.PC] = 0
+      this.z80.reg8[this.z80.regOffsets8.A] = 0x12
+      this.initFlags = Object.assign({}, this.z80.flags)
     })
-    it('should set register B to the value of A', function() {
-      assert.equal(0x12, z80.reg8[z80.regOffsets8.B])
+    describe('LD B,A', function() {
+      beforeEach(function() {
+        const code = new Uint8Array([
+          0x47,
+        ])
+        this.mmu.copyFrom(code, 0)
+        this.z80.stepExecution()
+      })
+      it('should set register B to the value of A', function() {
+        assert.equal(0x12, this.z80.reg8[this.z80.regOffsets8.B])
+      })
+      shouldNotAlterFlags()
     })
-    it('should leave the flags untouched', function() {
-      checkFlags(initFlags, z80.flags)
+    describe('LD C,A', function() {
+      beforeEach(function() {
+        const code = new Uint8Array([
+          0x4F,
+        ])
+        this.mmu.copyFrom(code, 0)
+        this.z80.stepExecution()
+      })
+      it('should set register C to the value of A', function() {
+        assert.equal(0x12, this.z80.reg8[this.z80.regOffsets8.C])
+      })
+      shouldNotAlterFlags()
+    })
+    describe('LD D,A', function() {
+      beforeEach(function() {
+        const code = new Uint8Array([
+          0x57,
+        ])
+        this.mmu.copyFrom(code, 0)
+        this.z80.stepExecution()
+      })
+      it('should set register D to the value of A', function() {
+        assert.equal(0x12, this.z80.reg8[this.z80.regOffsets8.D])
+      })
+      shouldNotAlterFlags()
+    })
+    describe('LD E,A', function() {
+      beforeEach(function() {
+        const code = new Uint8Array([
+          0x5F,
+        ])
+        this.mmu.copyFrom(code, 0)
+        this.z80.stepExecution()
+      })
+      it('should set register E to the value of A', function() {
+        assert.equal(0x12, this.z80.reg8[this.z80.regOffsets8.E])
+      })
+      shouldNotAlterFlags()
+    })
+    describe('LD H,A', function() {
+      beforeEach(function() {
+        const code = new Uint8Array([
+          0x67,
+        ])
+        this.mmu.copyFrom(code, 0)
+        this.z80.stepExecution()
+      })
+      it('should set register H to the value of A', function() {
+        assert.equal(0x12, this.z80.reg8[this.z80.regOffsets8.H])
+      })
+      shouldNotAlterFlags()
+    })
+    describe('LD L,A', function() {
+      beforeEach(function() {
+        const code = new Uint8Array([
+          0x6F,
+        ])
+        this.mmu.copyFrom(code, 0)
+        this.z80.stepExecution()
+      })
+      it('should set register L to the value of A', function() {
+        assert.equal(0x12, this.z80.reg8[this.z80.regOffsets8.L])
+      })
+      shouldNotAlterFlags()
+    })
+    describe('LD A,A', function() {
+      beforeEach(function() {
+        const code = new Uint8Array([
+          0x7F,
+        ])
+        this.mmu.copyFrom(code, 0)
+        this.z80.stepExecution()
+      })
+      it('should set register A to the value of A', function() {
+        assert.equal(0x12, this.z80.reg8[this.z80.regOffsets8.A])
+      })
+      shouldNotAlterFlags()
     })
   })
 })
