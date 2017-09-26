@@ -1,18 +1,73 @@
 import Z80 from '../z80.js'
 import MMU from '../mmu.js'
 
-import assert from 'assert'
+import { assert } from 'chai'
 
 const shouldNotAlterFlags = function() {
   it('should not alter flags', function() {
-    assert.equal(this.initFlags.S, this.z80.flags.S)
-    assert.equal(this.initFlags.Z, this.z80.flags.Z)
-    assert.equal(this.initFlags.Y, this.z80.flags.Y)
-    assert.equal(this.initFlags.H, this.z80.flags.H)
-    assert.equal(this.initFlags.X, this.z80.flags.X)
-    assert.equal(this.initFlags.P, this.z80.flags.P)
-    assert.equal(this.initFlags.N, this.z80.flags.N)
-    assert.equal(this.initFlags.C, this.z80.flags.C)
+    assert.equal(this.z80.flags.S, this.initFlags.S, 'S unchanged')
+    assert.equal(this.z80.flags.Z, this.initFlags.Z, 'Z unchanged')
+    assert.equal(this.z80.flags.Y, this.initFlags.Y, 'Y unchanged')
+    assert.equal(this.z80.flags.H, this.initFlags.H, 'H unchanged')
+    assert.equal(this.z80.flags.X, this.initFlags.X, 'X unchanged')
+    assert.equal(this.z80.flags.P, this.initFlags.P, 'P unchanged')
+    assert.equal(this.z80.flags.N, this.initFlags.N, 'N unchanged')
+    assert.equal(this.z80.flags.C, this.initFlags.C, 'C unchanged')
+  })
+}
+
+const allRegs = { 
+  'A': ['AF'], 
+  'F': ['AF'], 
+  'B': ['BC'], 
+  'C': ['BC'], 
+  'D': ['DE'], 
+  'E': ['DE'], 
+  'H': ['HL'], 
+  'L': ['HL'],
+  'A_': ['AF_'], 
+  'F_': ['AF_'], 
+  'B_': ['BC_'], 
+  'C_': ['BC_'], 
+  'D_': ['DE_'], 
+  'E_': ['DE_'], 
+  'H_': ['HL_'], 
+  'L_': ['HL_'], 
+  'IXh': ['IX'], 
+  'IXl': ['IX'], 
+  'IYh': ['IY'], 
+  'IYl': ['IY'], 
+  'I': ['IR'], 
+  'R': ['IR'], 
+  'AF': ['A', 'F'], 
+  'BC': ['B', 'C'], 
+  'DE': ['D', 'E'], 
+  'HL': ['H', 'L'], 
+  'AF_': ['A_', 'F_'], 
+  'BC_': ['B_', 'C_'], 
+  'DE_': ['D_', 'E_'], 
+  'HL_': ['H_', 'L_'], 
+  'IX': ['IXh', 'IXl'], 
+  'IY': ['IYh', 'IYl'], 
+  'IR': ['I', 'R'], 
+  'SP': [], 
+  'PC': [],
+}
+
+const shouldNotAffectRegisters = function(registers) {
+  let regString = Object.getOwnPropertyNames(registers).join(', ')
+  it(`should leave registers [${regString}]`, function() {
+    Object.getOwnPropertyNames(registers).forEach(
+      (val) => {
+        if(val in this.z80.regOffsets8) {
+          assert.equal(this.z80.reg8[this.z80.regOffsets8[val]], this.initReg8[this.z80.regOffsets8[val]],
+            `${val} unchanged`)
+        } else if(val in this.z80.regOffsets16) {
+          assert.equal(this.z80.reg16[this.z80.regOffsets16[val]], this.initReg16[this.z80.regOffsets16[val]],
+            `${val} unchanged`)
+        }
+      }
+    )
   })
 }
 
@@ -24,12 +79,27 @@ function makeLDr_rTests(regA, regB, opcodes) {
       this.z80.reg16[this.z80.regOffsets16.PC] = 0
       this.z80.reg8[this.z80.regOffsets8[regB]] = 0x12
       this.initFlags = Object.assign({}, this.z80.flags)
+      this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
+      this.initReg8 = new Uint8Array(this.initRegs)
+      this.initReg16 = new Uint16Array(this.initRegs)
+      this.initReg8.set(this.z80.reg8)
+      // Now execute the instruction
       this.z80.stepExecution()
     })
     it(`should set register ${regA} to the value of ${regB}`, function() {
-      assert.equal(0x12, this.z80.reg8[this.z80.regOffsets8[regA]])
+      assert.equal(this.z80.reg8[this.z80.regOffsets8[regA]], 0x12,
+        `${regA} === 0x12`)
     })
     shouldNotAlterFlags()
+    const cleanRegs = Object.assign({}, allRegs)
+    delete cleanRegs[regA]
+    delete cleanRegs["PC"]
+    if(allRegs[regA].length > 0) {
+      for(let o in allRegs[regA]) {
+        delete cleanRegs[allRegs[regA][o]]
+      }
+    }
+    shouldNotAffectRegisters(cleanRegs)
   })
 }
 
@@ -43,7 +113,8 @@ function makeLDrr_nnTests(regA, val, opcodes) {
       this.z80.stepExecution()
     })
     it(`should set register ${regA} to ${('000' + val.toString(16)).substr(-4).toUpperCase()}H`, function() {
-      assert.equal(val, this.z80.reg16[this.z80.regOffsets16[regA]])
+      assert.equal(this.z80.reg16[this.z80.regOffsets16[regA]], val,
+        `${regA} === ${('000' + val.toString(16)).substr(-4).toUpperCase()}H`)
     })
     shouldNotAlterFlags()
   })

@@ -4503,8 +4503,8 @@ export default class Z80 {
       /* 47 */ {
 				name: "LD I,A",
 				exec() {
+          LD_R_R(z80, z80.regOffsets8.I, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 48 */ {
@@ -4559,8 +4559,8 @@ export default class Z80 {
       /* 4F */ {
 				name: "LD R,A",
 				exec() {
+          LD_R_R(z80, z80.regOffsets8.R, z80.regOffsets8.A)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 50 */ {
@@ -4615,8 +4615,8 @@ export default class Z80 {
       /* 57 */ {
 				name: "LD A,I",
 				exec() {
+          LD_R_R(z80, z80.regOffsets8.A, z80.regOffsets8.I)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 58 */ {
@@ -4671,8 +4671,8 @@ export default class Z80 {
       /* 5F */ {
 				name: "LD A,R",
 				exec() {
+          LD_R_R(z80, z80.regOffsets8.A, z80.regOffsets8.R)
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* 60 */ {
