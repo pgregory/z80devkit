@@ -71,7 +71,7 @@ const shouldNotAffectRegisters = function(registers) {
   })
 }
 
-function makeLDr_rTests(regA, regB, opcodes) {
+function makeLDr_rTests(regA, regB, opcodes, length) {
   describe(`LD ${regA}, ${regB}`, function() {
     beforeEach(function() {
       const code = new Uint8Array(opcodes)
@@ -90,6 +90,10 @@ function makeLDr_rTests(regA, regB, opcodes) {
       assert.equal(this.z80.reg8[this.z80.regOffsets8[regA]], 0x12,
         `${regA} === 0x12`)
     })
+    it(`should advance PC by 1`, function() {
+      assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + length,
+        `PC === PC + ${length}`)
+    })
     shouldNotAlterFlags()
     const cleanRegs = Object.assign({}, allRegs)
     delete cleanRegs[regA]
@@ -103,20 +107,37 @@ function makeLDr_rTests(regA, regB, opcodes) {
   })
 }
 
-function makeLDrr_nnTests(regA, val, opcodes) {
+function makeLDrr_nnTests(regA, val, opcodes, length) {
   describe(`LD ${regA}, ${('000' + val.toString(16)).substr(-4).toUpperCase()}H`, function() {
     beforeEach(function() {
       const code = new Uint8Array(opcodes)
       this.mmu.copyFrom(code, 0)
       this.z80.reg16[this.z80.regOffsets16.PC] = 0
       this.initFlags = Object.assign({}, this.z80.flags)
+      this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
+      this.initReg8 = new Uint8Array(this.initRegs)
+      this.initReg16 = new Uint16Array(this.initRegs)
+      this.initReg8.set(this.z80.reg8)
       this.z80.stepExecution()
     })
     it(`should set register ${regA} to ${('000' + val.toString(16)).substr(-4).toUpperCase()}H`, function() {
       assert.equal(this.z80.reg16[this.z80.regOffsets16[regA]], val,
         `${regA} === ${('000' + val.toString(16)).substr(-4).toUpperCase()}H`)
     })
+    it(`should advance PC by ${length}`, function() {
+      assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + length,
+        `PC === PC + ${length}`)
+    })
     shouldNotAlterFlags()
+    const cleanRegs = Object.assign({}, allRegs)
+    delete cleanRegs[regA]
+    delete cleanRegs["PC"]
+    if(allRegs[regA].length > 0) {
+      for(let o in allRegs[regA]) {
+        delete cleanRegs[allRegs[regA][o]]
+      }
+    }
+    shouldNotAffectRegisters(cleanRegs)
   })
 }
 
@@ -143,55 +164,83 @@ describe('LD', function() {
           (val2) => {
             // LD [A,B,C,D,E,H,L], [A,B,C,D,E,H,L]
             const opcode = 0x40 | (regs[val] << 3) | (regs[val2])
-            makeLDr_rTests(val, val2, [opcode])
+            makeLDr_rTests(val, val2, [opcode], 1)
           }
         )
       }
     )
 
-    makeLDr_rTests('A', 'I', [0xED, 0x57])
-    makeLDr_rTests('A', 'R', [0xED, 0x5F])
-    makeLDr_rTests('I', 'A', [0xED, 0x47])
-    makeLDr_rTests('R', 'A', [0xED, 0x4F])
+    makeLDr_rTests('A', 'I', [0xED, 0x57], 2)
+    makeLDr_rTests('A', 'R', [0xED, 0x5F], 2)
+    makeLDr_rTests('I', 'A', [0xED, 0x47], 2)
+    makeLDr_rTests('R', 'A', [0xED, 0x4F], 2)
 
     Object.getOwnPropertyNames(regs).forEach(
       (val) => {
         if(val !== 'H' && val !== 'L') {
           // LD [A,B,C,D,E], [IX[h,l]/IY[h,l]]
           let opcode = 0x40 | (regs[val] << 3) | regs.H
-          makeLDr_rTests(val, 'IXh', [0xDD, opcode])
-          makeLDr_rTests(val, 'IYh', [0xFD, opcode])
+          makeLDr_rTests(val, 'IXh', [0xDD, opcode], 2)
+          makeLDr_rTests(val, 'IYh', [0xFD, opcode], 2)
           opcode = 0x40 | (regs[val] << 3) | regs.L
-          makeLDr_rTests(val, 'IXl', [0xDD, opcode])
-          makeLDr_rTests(val, 'IYl', [0xFD, opcode])
+          makeLDr_rTests(val, 'IXl', [0xDD, opcode], 2)
+          makeLDr_rTests(val, 'IYl', [0xFD, opcode], 2)
 
           // LD [IX[h,l]/IY[h,l]], [A,B,C,D,E]
           opcode = 0x40 | (regs.H << 3) | regs[val]
-          makeLDr_rTests('IXh', val, [0xDD, opcode])
-          makeLDr_rTests('IYh', val, [0xFD, opcode])
+          makeLDr_rTests('IXh', val, [0xDD, opcode], 2)
+          makeLDr_rTests('IYh', val, [0xFD, opcode], 2)
           opcode = 0x40 | (regs.L << 3) | (regs[val])
-          makeLDr_rTests('IXl', val, [0xDD, opcode])
-          makeLDr_rTests('IYl', val, [0xFD, opcode])
+          makeLDr_rTests('IXl', val, [0xDD, opcode], 2)
+          makeLDr_rTests('IYl', val, [0xFD, opcode], 2)
         }
       }
     )
 
     // LD [IXh, IXl], [IXh, IXl]
-    makeLDr_rTests('IXh', 'IXh', [0xDD, 0x64])
-    makeLDr_rTests('IXh', 'IXl', [0xDD, 0x65])
-    makeLDr_rTests('IXl', 'IXh', [0xDD, 0x6C])
-    makeLDr_rTests('IXl', 'IXl', [0xDD, 0x6D])
-    makeLDr_rTests('IYh', 'IYh', [0xFD, 0x64])
-    makeLDr_rTests('IYh', 'IYl', [0xFD, 0x65])
-    makeLDr_rTests('IYl', 'IYh', [0xFD, 0x6C])
-    makeLDr_rTests('IYl', 'IYl', [0xFD, 0x6D])
+    makeLDr_rTests('IXh', 'IXh', [0xDD, 0x64], 2)
+    makeLDr_rTests('IXh', 'IXl', [0xDD, 0x65], 2)
+    makeLDr_rTests('IXl', 'IXh', [0xDD, 0x6C], 2)
+    makeLDr_rTests('IXl', 'IXl', [0xDD, 0x6D], 2)
+    makeLDr_rTests('IYh', 'IYh', [0xFD, 0x64], 2)
+    makeLDr_rTests('IYh', 'IYl', [0xFD, 0x65], 2)
+    makeLDr_rTests('IYl', 'IYh', [0xFD, 0x6C], 2)
+    makeLDr_rTests('IYl', 'IYl', [0xFD, 0x6D], 2)
 
     // LD [BC,DE,HL,SP,IX,IY], nn
-    makeLDrr_nnTests('BC', 0x1234, [0x01, 0x34, 0x12])
-    makeLDrr_nnTests('DE', 0x1234, [0x11, 0x34, 0x12])
-    makeLDrr_nnTests('HL', 0x1234, [0x21, 0x34, 0x12])
-    makeLDrr_nnTests('SP', 0x1234, [0x31, 0x34, 0x12])
-    makeLDrr_nnTests('IX', 0x1234, [0xDD, 0x21, 0x34, 0x12])
-    makeLDrr_nnTests('IY', 0x1234, [0xFD, 0x21, 0x34, 0x12])
+    makeLDrr_nnTests('BC', 0x1234, [0x01, 0x34, 0x12], 3)
+    makeLDrr_nnTests('DE', 0x1234, [0x11, 0x34, 0x12], 3)
+    makeLDrr_nnTests('HL', 0x1234, [0x21, 0x34, 0x12], 3)
+    makeLDrr_nnTests('SP', 0x1234, [0x31, 0x34, 0x12], 3)
+    makeLDrr_nnTests('IX', 0x1234, [0xDD, 0x21, 0x34, 0x12], 4)
+    makeLDrr_nnTests('IY', 0x1234, [0xFD, 0x21, 0x34, 0x12], 4)
+
+    describe('LD SP, HL', function() {
+      beforeEach(function() {
+        const code = new Uint8Array([0xF9])
+        this.mmu.copyFrom(code, 0)
+        this.z80.reg16[this.z80.regOffsets16.PC] = 0
+        this.z80.reg16[this.z80.regOffsets16.HL] = 0x1234
+        this.initFlags = Object.assign({}, this.z80.flags)
+        this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
+        this.initReg8 = new Uint8Array(this.initRegs)
+        this.initReg16 = new Uint16Array(this.initRegs)
+        this.initReg8.set(this.z80.reg8)
+        this.z80.stepExecution()
+      })
+      it(`should set register SP to 1234H`, function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.HL], 0x1234,
+          `SP === 1234H`)
+      })
+      it(`should advance PC by 1`, function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 1,
+          'PC === PC + 1')
+      })
+      shouldNotAlterFlags()
+      const cleanRegs = Object.assign({}, allRegs)
+      delete cleanRegs["SP"]
+      delete cleanRegs["PC"]
+      shouldNotAffectRegisters(cleanRegs)
+    })
   })
 })
