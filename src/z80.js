@@ -127,8 +127,8 @@ DEFINE_MACRO(LD_RR_FROM_NNNN, (z80, r) => {
   const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
   const addr = (nh << 8) + nl
   // Read data from address
-  const rh = z80.mmu.readByte(addr)
-  const rl = z80.mmu.readByte(addr + 1)
+  const rl = z80.mmu.readByte(addr)
+  const rh = z80.mmu.readByte(addr + 1)
   // TODO: Is this construction right?
   z80.reg16[r] = (rh << 8) + rl
 })
@@ -139,7 +139,7 @@ DEFINE_MACRO(LD_TO_NNNN_R, (z80, r) => {
   const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
   const addr = (nh << 8) + nl
   const value = z80.reg8[r]
-  z80.mmu.writeByte(addr, value & 0xFF)
+  z80.mmu.writeByte(addr, value)
 })
 
 DEFINE_MACRO(LD_TO_NNNN_RR, (z80, r) => {
@@ -148,7 +148,7 @@ DEFINE_MACRO(LD_TO_NNNN_RR, (z80, r) => {
   const nh = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 2) 
   let addr = (nh << 8) + nl
   const value = z80.reg16[r]
-  z80.mmu.writeByte(addr, value & 0xFF)
+  z80.mmu.writeByte(addr, value)
   addr = (addr + 1) & 0xFFFF
   z80.mmu.writeByte(addr, value >> 8)
 })
@@ -908,7 +908,7 @@ export default class Z80 {
       /* 32 */ {
 				name: "LD (\\2\\1H),A",
 				exec() {
-          LD_TO_NNNN_R(z80, z80.regOffsets16.A)
+          LD_TO_NNNN_R(z80, z80.regOffsets8.A)
 				},
 				length: 3
 			 },
@@ -4616,6 +4616,13 @@ export default class Z80 {
 				name: "LD A,I",
 				exec() {
           LD_R_R(z80, z80.regOffsets8.A, z80.regOffsets8.I)
+          // Set flags, this is one of the few LD instructions that affect flags.
+          const i = z80.reg8[z80.regOffsets8.I]
+          z80.flags.S = ((i & 0x80) !== 0)
+          z80.flags.Z = !(i & 0xFF)
+          z80.flags.H = false
+          z80.flags.P = false // TODO: should be set to IFF2
+          z80.flags.N = false
 				},
 				length: 1
 			 },
@@ -4672,6 +4679,13 @@ export default class Z80 {
 				name: "LD A,R",
 				exec() {
           LD_R_R(z80, z80.regOffsets8.A, z80.regOffsets8.R)
+          // Set flags, this is one of the few LD instructions that affect flags.
+          const r = z80.reg8[z80.regOffsets8.R]
+          z80.flags.S = ((r & 0x80) !== 0)
+          z80.flags.Z = !(r & 0xFF)
+          z80.flags.H = false
+          z80.flags.P = false // TODO: should be set to IFF2
+          z80.flags.N = false
 				},
 				length: 1
 			 },
