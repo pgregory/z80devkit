@@ -97,7 +97,7 @@ function makeADDA_rTests(regA, opcodes, length) {
       this.initReg16 = new Uint16Array(this.initRegs)
       this.initReg8.set(this.z80.reg8)
     })
-    describe('Addition with overflow', function() {
+    describe('Addition with carry', function() {
       beforeEach(function() {
         this.z80.reg8[this.z80.regOffsets8.A] = 0x81
         this.z80.reg8[this.z80.regOffsets8[regA]] = 0x80
@@ -107,16 +107,16 @@ function makeADDA_rTests(regA, opcodes, length) {
         assert.equal(this.z80.reg8[this.z80.regOffsets8.A], 0x01,
           'A === 01H')
       })
-      it('should advance PC by 1', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 1,
-          'PC === PC + 1')
+      it(`should advance PC by ${length}`, function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + length,
+          `PC === PC + ${length}`)
       })
       it('should set the carry flag', function() {
         assert.equal(this.z80.flags.C, true, 'carry flag set')
       })
       shouldNotAffectRegisters(selectRegs(["PC", "A", regA]))
     })
-    describe('Addition with no overflow', function() {
+    describe('Addition with no carry', function() {
       beforeEach(function() {
         this.z80.reg8[this.z80.regOffsets8.A] = 0x21
         this.z80.reg8[this.z80.regOffsets8[regA]] = 0x20
@@ -125,10 +125,6 @@ function makeADDA_rTests(regA, opcodes, length) {
       it('should set result in A to 41H', function() {
         assert.equal(this.z80.reg8[this.z80.regOffsets8.A], 0x41,
           'A === 41H')
-      })
-      it('should advance PC by 1', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 1,
-          'PC === PC + 1')
       })
       it('should reset the carry flag', function() {
         assert.equal(this.z80.flags.C, false, 'carry flag reset')
@@ -144,10 +140,6 @@ function makeADDA_rTests(regA, opcodes, length) {
       it('should set result in A to 00H', function() {
         assert.equal(this.z80.reg8[this.z80.regOffsets8.A], 0x00,
           'A === 00H')
-      })
-      it('should advance PC by 1', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 1,
-          'PC === PC + 1')
       })
       it('should reset the carry flag', function() {
         assert.equal(this.z80.flags.C, false, 'carry flag reset')
@@ -167,10 +159,6 @@ function makeADDA_rTests(regA, opcodes, length) {
         assert.equal(this.z80.reg8[this.z80.regOffsets8.A], 0x00,
           'A === 00H')
       })
-      it('should advance PC by 1', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 1,
-          'PC === PC + 1')
-      })
       it('should set the carry flag', function() {
         assert.equal(this.z80.flags.C, true, 'carry flag set')
       })
@@ -189,10 +177,6 @@ function makeADDA_rTests(regA, opcodes, length) {
         assert.equal(this.z80.reg8[this.z80.regOffsets8.A], 0xE1,
           'A === E1H')
       })
-      it('should advance PC by 1', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 1,
-          'PC === PC + 1')
-      })
       it('should set the overflow flag', function() {
         assert.equal(this.z80.flags.P, true, 'overflow flag set')
       })
@@ -207,10 +191,6 @@ function makeADDA_rTests(regA, opcodes, length) {
       it('should set result in A to 00H', function() {
         assert.equal(this.z80.reg8[this.z80.regOffsets8.A], 0x00,
           'A === 00H')
-      })
-      it('should advance PC by 1', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 1,
-          'PC === PC + 1')
       })
       it('should reset the overflow flag', function() {
         assert.equal(this.z80.flags.P, false, 'overflow flag reset')
@@ -245,5 +225,108 @@ describe('ADD', function() {
         makeADDA_rTests(val, [opcode], 1)
       }
     )
+    
+    makeADDA_rTests('IXh', [0xDD, 0x84], 2)
+    makeADDA_rTests('IXl', [0xDD, 0x85], 2)
+    makeADDA_rTests('IYh', [0xFD, 0x84], 2)
+    makeADDA_rTests('IYl', [0xFD, 0x85], 2)
+  })
+
+  // Special case ADD A,A
+  describe('ADD A, A', function() {
+    beforeEach(function() {
+      const code = new Uint8Array([0x87])
+      this.mmu.copyFrom(code, 0)
+      this.z80.reg16[this.z80.regOffsets16.PC] = 0
+      this.initFlags = Object.assign({}, this.z80.flags)
+      this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
+      this.initReg8 = new Uint8Array(this.initRegs)
+      this.initReg16 = new Uint16Array(this.initRegs)
+      this.initReg8.set(this.z80.reg8)
+    })
+    describe('Addition with carry and overflow', function() {
+      beforeEach(function() {
+        this.z80.reg8[this.z80.regOffsets8.A] = 0x81
+        this.z80.stepExecution()
+      })
+      it('should set result in A to 02H', function() {
+        assert.equal(this.z80.reg8[this.z80.regOffsets8.A], 0x02,
+          'A === 02H')
+      })
+      it('should advance PC by 1', function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 1,
+          'PC === PC + 1')
+      })
+      it('should set the carry flag', function() {
+        assert.equal(this.z80.flags.C, true, 'carry flag set')
+      })
+      it('should set the overflow flag', function() {
+        assert.equal(this.z80.flags.P, true, 'overflow flag set')
+      })
+      shouldNotAffectRegisters(selectRegs(["PC", "A"]))
+    })
+    describe('Addition with no carry or overflow', function() {
+      beforeEach(function() {
+        this.z80.reg8[this.z80.regOffsets8.A] = 0x21
+        this.z80.stepExecution()
+      })
+      it('should set result in A to 42H', function() {
+        assert.equal(this.z80.reg8[this.z80.regOffsets8.A], 0x42,
+          'A === 42H')
+      })
+      it('should advance PC by 1', function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 1,
+          'PC === PC + 1')
+      })
+      it('should reset the carry flag', function() {
+        assert.equal(this.z80.flags.C, false, 'carry flag reset')
+      })
+      it('should reset the overflow flag', function() {
+        assert.equal(this.z80.flags.P, false, 'overflow flag reset')
+      })
+      shouldNotAffectRegisters(selectRegs(["PC", "A"]))
+    })
+    describe('Addition with zero result, no carry', function() {
+      beforeEach(function() {
+        this.z80.reg8[this.z80.regOffsets8.A] = 0x00
+        this.z80.stepExecution()
+      })
+      it('should set result in A to 00H', function() {
+        assert.equal(this.z80.reg8[this.z80.regOffsets8.A], 0x00,
+          'A === 00H')
+      })
+      it('should advance PC by 1', function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 1,
+          'PC === PC + 1')
+      })
+      it('should reset the carry flag', function() {
+        assert.equal(this.z80.flags.C, false, 'carry flag reset')
+      })
+      it('should set the zero flag', function() {
+        assert.equal(this.z80.flags.Z, true, 'zero flag set')
+      })
+      shouldNotAffectRegisters(selectRegs(["PC", "A"]))
+    })
+    describe('Addition with zero result, and carry', function() {
+      beforeEach(function() {
+        this.z80.reg8[this.z80.regOffsets8.A] = 0x80
+        this.z80.stepExecution()
+      })
+      it('should set result in A to 00H', function() {
+        assert.equal(this.z80.reg8[this.z80.regOffsets8.A], 0x00,
+          'A === 00H')
+      })
+      it('should advance PC by 1', function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 1,
+          'PC === PC + 1')
+      })
+      it('should set the carry flag', function() {
+        assert.equal(this.z80.flags.C, true, 'carry flag set')
+      })
+      it('should set the zero flag', function() {
+        assert.equal(this.z80.flags.Z, true, 'zero flag set')
+      })
+      shouldNotAffectRegisters(selectRegs(["PC", "A"]))
+    })
   })
 })
