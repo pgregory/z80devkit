@@ -94,16 +94,6 @@ DEFINE_MACRO(FLAGS_MM0P0M, (z80, a, b, r) => {
   FLAGS_XY_A(z80, r)
 })
 
-DEFINE_MACRO(FLAGS_NNMN0M, (z80, a, b, r) => {
-  //z80.flags.S = 
-  //z80.flags.Z = 
-  z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
-  //z80.flags.P = 
-  z80.flags.N = false
-  z80.flags.C = (r > 255)
-  FLAGS_XY_A(z80, r)
-})
-
 DEFINE_MACRO(JP_CC_NNNN, (z80, cond, length) => {
   const addr = z80.mmu.readWord(z80.reg16[z80.regOffsets16.PC] + 1)
   if(cond) {
@@ -192,7 +182,10 @@ DEFINE_MACRO(ADD_RR_RR, (z80, r, r2) => {
   const b = z80.reg16[r2]
   const res = a + b
   z80.reg16[r] = res
-  FLAGS_NNMN0M(z80, a, b, res)
+  z80.flags.H = ((((a & 0xFFF) + (b & 0xFFF)) & 0x1000) !== 0)
+  z80.flags.N = false
+  z80.flags.C = (res > 0xFFFF)
+  // TODO: XY Flags
 })
 
 DEFINE_MACRO(ADC_R_R, (z80, r, r2) => {
