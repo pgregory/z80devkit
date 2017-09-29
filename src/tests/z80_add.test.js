@@ -911,4 +911,120 @@ describe('ADD', function() {
       shouldNotAffectRegisters(selectRegs(["PC", "HL"]))
     })
   })
+
+  // ADD IX, [BC,DE,SP]
+  makeADDrr_rrTests('IX', 'BC', [0xDD, 0x09], 2)
+  makeADDrr_rrTests('IX', 'DE', [0xDD, 0x19], 2)
+  makeADDrr_rrTests('IX', 'SP', [0xDD, 0x39], 2)
+
+  // Special case for ADD IX, IX
+  describe('ADD IX, IX', function() {
+    beforeEach(function() {
+      const code = new Uint8Array([0xDD, 0x29])
+      this.mmu.copyFrom(code, 2)
+      this.z80.reg16[this.z80.regOffsets16.PC] = 2
+      this.initFlags = Object.assign({}, this.z80.flags)
+      this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
+      this.initReg8 = new Uint8Array(this.initRegs)
+      this.initReg16 = new Uint16Array(this.initRegs)
+    })
+    describe('Addition with carry', function() {
+      beforeEach(function() {
+        this.z80.reg16[this.z80.regOffsets16.IX] = 0xA8A1
+        this.initReg8.set(this.z80.reg8)
+        this.z80.stepExecution()
+      })
+      it('should set result in IX to 5142H', function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.IX], 0x5142,
+          'IX === 5142H')
+      })
+      it('should advance PC by 2', function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 2,
+          'PC === PC + 2')
+      })
+      it('should set the carry flag', function() {
+        assert.equal(this.z80.flags.C, true, 'carry flag set')
+      })
+      it('should set the half carry flag', function() {
+        assert.equal(this.z80.flags.H, true, 'half carry flag set')
+      })
+      shouldNotAffectRegisters(selectRegs(["PC", "IX"]))
+    })
+    describe('Addition with no carry', function() {
+      beforeEach(function() {
+        this.z80.reg16[this.z80.regOffsets16.IX] = 0x4343
+        this.initReg8.set(this.z80.reg8)
+        this.z80.stepExecution()
+      })
+      it('should set result in IX to 8686H', function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.IX], 0x8686,
+          'IX === 8686H')
+      })
+      it('should reset the carry flag', function() {
+        assert.equal(this.z80.flags.C, false, 'carry flag reset')
+      })
+      it('should reset the half carry flag', function() {
+        assert.equal(this.z80.flags.C, false, 'carry flag reset')
+      })
+      shouldNotAffectRegisters(selectRegs(["PC", "IX"]))
+    })
+  })
+  
+  // ADD IY, [BC,DE,SP]
+  makeADDrr_rrTests('IY', 'BC', [0xFD, 0x09], 2)
+  makeADDrr_rrTests('IY', 'DE', [0xFD, 0x19], 2)
+  makeADDrr_rrTests('IY', 'SP', [0xFD, 0x39], 2)
+
+  // Special case for ADD IY, IY
+  describe('ADD IY, IY', function() {
+    beforeEach(function() {
+      const code = new Uint8Array([0xFD, 0x29])
+      this.mmu.copyFrom(code, 2)
+      this.z80.reg16[this.z80.regOffsets16.PC] = 2
+      this.initFlags = Object.assign({}, this.z80.flags)
+      this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
+      this.initReg8 = new Uint8Array(this.initRegs)
+      this.initReg16 = new Uint16Array(this.initRegs)
+    })
+    describe('Addition with carry', function() {
+      beforeEach(function() {
+        this.z80.reg16[this.z80.regOffsets16.IY] = 0xA8A1
+        this.initReg8.set(this.z80.reg8)
+        this.z80.stepExecution()
+      })
+      it('should set result in IY to 5142H', function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.IY], 0x5142,
+          'IY === 5142H')
+      })
+      it('should advance PC by 2', function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 2,
+          'PC === PC + 2')
+      })
+      it('should set the carry flag', function() {
+        assert.equal(this.z80.flags.C, true, 'carry flag set')
+      })
+      it('should set the half carry flag', function() {
+        assert.equal(this.z80.flags.H, true, 'half carry flag set')
+      })
+      shouldNotAffectRegisters(selectRegs(["PC", "IY"]))
+    })
+    describe('Addition with no carry', function() {
+      beforeEach(function() {
+        this.z80.reg16[this.z80.regOffsets16.IY] = 0x4343
+        this.initReg8.set(this.z80.reg8)
+        this.z80.stepExecution()
+      })
+      it('should set result in IY to 8686H', function() {
+        assert.equal(this.z80.reg16[this.z80.regOffsets16.IY], 0x8686,
+          'IY === 8686H')
+      })
+      it('should reset the carry flag', function() {
+        assert.equal(this.z80.flags.C, false, 'carry flag reset')
+      })
+      it('should reset the half carry flag', function() {
+        assert.equal(this.z80.flags.C, false, 'carry flag reset')
+      })
+      shouldNotAffectRegisters(selectRegs(["PC", "IY"]))
+    })
+  })
 })
