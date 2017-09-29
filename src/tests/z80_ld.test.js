@@ -3,73 +3,7 @@ import MMU from '../mmu.js'
 
 import { assert } from 'chai'
 
-const shouldNotAlterFlags = function() {
-  it('should not alter flags', function() {
-    assert.equal(this.z80.flags.S, this.initFlags.S, 'S unchanged')
-    assert.equal(this.z80.flags.Z, this.initFlags.Z, 'Z unchanged')
-    assert.equal(this.z80.flags.Y, this.initFlags.Y, 'Y unchanged')
-    assert.equal(this.z80.flags.H, this.initFlags.H, 'H unchanged')
-    assert.equal(this.z80.flags.X, this.initFlags.X, 'X unchanged')
-    assert.equal(this.z80.flags.P, this.initFlags.P, 'P unchanged')
-    assert.equal(this.z80.flags.N, this.initFlags.N, 'N unchanged')
-    assert.equal(this.z80.flags.C, this.initFlags.C, 'C unchanged')
-  })
-}
-
-const allRegs = { 
-  'A': ['AF'], 
-  'F': ['AF'], 
-  'B': ['BC'], 
-  'C': ['BC'], 
-  'D': ['DE'], 
-  'E': ['DE'], 
-  'H': ['HL'], 
-  'L': ['HL'],
-  'A_': ['AF_'], 
-  'F_': ['AF_'], 
-  'B_': ['BC_'], 
-  'C_': ['BC_'], 
-  'D_': ['DE_'], 
-  'E_': ['DE_'], 
-  'H_': ['HL_'], 
-  'L_': ['HL_'], 
-  'IXh': ['IX'], 
-  'IXl': ['IX'], 
-  'IYh': ['IY'], 
-  'IYl': ['IY'], 
-  'I': ['IR'], 
-  'R': ['IR'], 
-  'AF': ['A', 'F'], 
-  'BC': ['B', 'C'], 
-  'DE': ['D', 'E'], 
-  'HL': ['H', 'L'], 
-  'AF_': ['A_', 'F_'], 
-  'BC_': ['B_', 'C_'], 
-  'DE_': ['D_', 'E_'], 
-  'HL_': ['H_', 'L_'], 
-  'IX': ['IXh', 'IXl'], 
-  'IY': ['IYh', 'IYl'], 
-  'IR': ['I', 'R'], 
-  'SP': [], 
-  'PC': [],
-}
-
-const shouldNotAffectRegisters = function(registers) {
-  let regString = Object.getOwnPropertyNames(registers).join(', ')
-  it(`should leave registers [${regString}]`, function() {
-    Object.getOwnPropertyNames(registers).forEach(
-      (val) => {
-        if(val in this.z80.regOffsets8) {
-          assert.equal(this.z80.reg8[this.z80.regOffsets8[val]], this.initReg8[this.z80.regOffsets8[val]],
-            `${val} unchanged`)
-        } else if(val in this.z80.regOffsets16) {
-          assert.equal(this.z80.reg16[this.z80.regOffsets16[val]], this.initReg16[this.z80.regOffsets16[val]],
-            `${val} unchanged`)
-        }
-      }
-    )
-  })
-}
+import {shouldNotAlterFlags, selectRegs, shouldNotAffectRegisters} from './helpers.js'
 
 function makeLDr_rTests(regA, regB, opcodes, length) {
   describe(`LD ${regA}, ${regB}`, function() {
@@ -95,15 +29,7 @@ function makeLDr_rTests(regA, regB, opcodes, length) {
         `PC === PC + ${length}`)
     })
     shouldNotAlterFlags()
-    const cleanRegs = Object.assign({}, allRegs)
-    delete cleanRegs[regA]
-    delete cleanRegs["PC"]
-    if(allRegs[regA].length > 0) {
-      for(let o in allRegs[regA]) {
-        delete cleanRegs[allRegs[regA][o]]
-      }
-    }
-    shouldNotAffectRegisters(cleanRegs)
+    shouldNotAffectRegisters(selectRegs(["PC", regA]))
   })
 }
 
@@ -130,15 +56,7 @@ function makeLDr_nTests(regA, val, opcodes, length) {
         `PC === PC + ${length}`)
     })
     shouldNotAlterFlags()
-    const cleanRegs = Object.assign({}, allRegs)
-    delete cleanRegs[regA]
-    delete cleanRegs["PC"]
-    if(allRegs[regA].length > 0) {
-      for(let o in allRegs[regA]) {
-        delete cleanRegs[allRegs[regA][o]]
-      }
-    }
-    shouldNotAffectRegisters(cleanRegs)
+    shouldNotAffectRegisters(selectRegs(["PC", regA]))
   })
 }
 
@@ -164,15 +82,7 @@ function makeLDrr_nnTests(regA, val, opcodes, length) {
         `PC === PC + ${length}`)
     })
     shouldNotAlterFlags()
-    const cleanRegs = Object.assign({}, allRegs)
-    delete cleanRegs[regA]
-    delete cleanRegs["PC"]
-    if(allRegs[regA].length > 0) {
-      for(let o in allRegs[regA]) {
-        delete cleanRegs[allRegs[regA][o]]
-      }
-    }
-    shouldNotAffectRegisters(cleanRegs)
+    shouldNotAffectRegisters(selectRegs(["PC", regA]))
   })
 }
 
@@ -200,15 +110,7 @@ function makeLDr_from_rrTests(regA, regB, offset, opcodes, length) {
         `PC === PC + ${length}`)
     })
     shouldNotAlterFlags()
-    const cleanRegs = Object.assign({}, allRegs)
-    delete cleanRegs[regA]
-    delete cleanRegs["PC"]
-    if(allRegs[regA].length > 0) {
-      for(let o in allRegs[regA]) {
-        delete cleanRegs[allRegs[regA][o]]
-      }
-    }
-    shouldNotAffectRegisters(cleanRegs)
+    shouldNotAffectRegisters(selectRegs(["PC", regA]))
   })
 }
 
@@ -237,9 +139,7 @@ function makeLDto_rr_rTests(regA, regB, offset, opcodes, length) {
         `PC === PC + ${length}`)
     })
     shouldNotAlterFlags()
-    const cleanRegs = Object.assign({}, allRegs)
-    delete cleanRegs["PC"]
-    shouldNotAffectRegisters(cleanRegs)
+    shouldNotAffectRegisters(selectRegs(["PC"]))
   })
 }
 
@@ -268,11 +168,7 @@ function makeLDA_IRTests(regA, opcodes) {
         assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 2,
           'PC === PC + 2')
       })
-      const cleanRegs = Object.assign({}, allRegs)
-      delete cleanRegs["A"]
-      delete cleanRegs["AF"]
-      delete cleanRegs["PC"]
-      shouldNotAffectRegisters(cleanRegs)
+      shouldNotAffectRegisters(selectRegs(["PC", "A"]))
     })
 
     describe('Non-negative result', function() {
@@ -373,15 +269,7 @@ function makeLDrr_from_nnTests(regA, address, opcodes, length) {
         `PC === PC + ${length}`)
     })
     shouldNotAlterFlags()
-    const cleanRegs = Object.assign({}, allRegs)
-    delete cleanRegs[regA]
-    delete cleanRegs["PC"]
-    if(allRegs[regA].length > 0) {
-      for(let o in allRegs[regA]) {
-        delete cleanRegs[allRegs[regA][o]]
-      }
-    }
-    shouldNotAffectRegisters(cleanRegs)
+    shouldNotAffectRegisters(selectRegs(["PC", regA]))
   })
 }
 
@@ -408,15 +296,7 @@ function makeLDto_nn_rrTests(regA, address, opcodes, length) {
         `PC === PC + ${length}`)
     })
     shouldNotAlterFlags()
-    const cleanRegs = Object.assign({}, allRegs)
-    delete cleanRegs[regA]
-    delete cleanRegs["PC"]
-    if(allRegs[regA].length > 0) {
-      for(let o in allRegs[regA]) {
-        delete cleanRegs[allRegs[regA][o]]
-      }
-    }
-    shouldNotAffectRegisters(cleanRegs)
+    shouldNotAffectRegisters(selectRegs(["PC", regA]))
   })
 }
 
@@ -517,10 +397,7 @@ describe('LD', function() {
           'PC === PC + 1')
       })
       shouldNotAlterFlags()
-      const cleanRegs = Object.assign({}, allRegs)
-      delete cleanRegs["SP"]
-      delete cleanRegs["PC"]
-      shouldNotAffectRegisters(cleanRegs)
+      shouldNotAffectRegisters(selectRegs(["PC", "SP"]))
     })
   })
 
@@ -611,9 +488,7 @@ describe('LD', function() {
         'PC === PC + 1')
     })
     shouldNotAlterFlags()
-    const cleanRegs = Object.assign({}, allRegs)
-    delete cleanRegs["PC"]
-    shouldNotAffectRegisters(cleanRegs)
+    shouldNotAffectRegisters(selectRegs(["PC"]))
   })
 
   describe('LD (HL),L', function() {
@@ -638,9 +513,7 @@ describe('LD', function() {
         'PC === PC + 1')
     })
     shouldNotAlterFlags()
-    const cleanRegs = Object.assign({}, allRegs)
-    delete cleanRegs["PC"]
-    shouldNotAffectRegisters(cleanRegs)
+    shouldNotAffectRegisters(selectRegs(["PC"]))
   })
 
   // LD [BC,DE,HL,SP,IX,IY], (NN)
@@ -683,9 +556,7 @@ describe('LD', function() {
         'PC === PC + 3')
     })
     shouldNotAlterFlags()
-    const cleanRegs = Object.assign({}, allRegs)
-    delete cleanRegs["PC"]
-    shouldNotAffectRegisters(cleanRegs)
+    shouldNotAffectRegisters(selectRegs(["PC"]))
   })
 
   // LD A, (NN)
@@ -711,11 +582,7 @@ describe('LD', function() {
         'PC === PC + 3')
     })
     shouldNotAlterFlags()
-    const cleanRegs = Object.assign({}, allRegs)
-    delete cleanRegs["A"]
-    delete cleanRegs["AF"]
-    delete cleanRegs["PC"]
-    shouldNotAffectRegisters(cleanRegs)
+    shouldNotAffectRegisters(selectRegs(["PC", "A"]))
   })
 
 })
