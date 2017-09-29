@@ -191,7 +191,7 @@ DEFINE_MACRO(ADD_RR_RR, (z80, r, r2) => {
 DEFINE_MACRO(ADC_R_R, (z80, r, r2) => {
   const a = z80.reg8[r]
   const b = z80.reg8[r2]
-  const res = a + b + (z80.flags.C)? 1 : 0
+  const res = a + b + ((z80.flags.C)? 1 : 0)
   z80.reg8[r] = res
   FLAGS_MMMV0M(z80, a, b, res)
 })
@@ -1581,7 +1581,7 @@ export default class Z80 {
           addr += ADJUST_ADDRESS(z80)
           const a = z80.reg8[z80.regOffsets8.A]
           const b = z80.mmu.readByte(addr)
-          const res = a + b + (z80.flags.C)? 0x01 : 0x00
+          const res = a + b + ((z80.flags.C)? 0x01 : 0x00)
           z80.reg8[z80.regOffsets8.A] = res
           FLAGS_MMMV0M(z80, a, b, res)
 				},
@@ -2083,7 +2083,7 @@ export default class Z80 {
 				exec() {
           const a = z80.reg8[z80.regOffsets8.A]
           const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
-          const res = a + b + (z80.flags.C)? 0x01 : 0x00
+          const res = a + b + ((z80.flags.C)? 0x01 : 0x00)
           z80.reg8[z80.regOffsets8.A] = res
           FLAGS_MMMV0M(z80, a, b, res)
 				},
