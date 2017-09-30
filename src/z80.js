@@ -2055,7 +2055,7 @@ export default class Z80 {
           const opcode = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
           z80.reg16[z80.regOffsets16.PC] += 1
           if(z80.cb_instructions[opcode] && z80.cb_instructions[opcode].unimplemented) {
-            console.log(`Error: unimplemented opcode: 0xCB${opcode.toString(16)}`)
+            throw new Error(`Error: unimplemented opcode: 0xCB${opcode.toString(16)}`)
           }
           if(z80.cb_instructions[opcode] && !z80.cb_instructions[opcode].exec()) {
             z80.reg16[z80.regOffsets16.PC] += z80.cb_instructions[opcode].length
@@ -2337,7 +2337,7 @@ export default class Z80 {
           const opcode = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
           z80.reg16[z80.regOffsets16.PC] += 1
           if(z80.ed_instructions[opcode] && z80.ed_instructions[opcode].unimplemented) {
-            console.log(`Error: unimplemented opcode: 0xED${opcode.toString(16)}`)
+            throw new Error(`Error: unimplemented opcode: 0xED${opcode.toString(16)}`)
           }
           if(z80.ed_instructions[opcode] && !z80.ed_instructions[opcode].exec()) {
             z80.reg16[z80.regOffsets16.PC] += z80.ed_instructions[opcode].length
@@ -5317,7 +5317,7 @@ export default class Z80 {
   stepExecution() {
     const opcode = this.mmu.readByte(this.reg16[this.regOffsets16.PC])
     if(this.instructions[opcode] && this.instructions[opcode].unimplemented) {
-      console.log(`Error: unimplemented opcode: 0x${opcode.toString(16)}`)
+      throw new Error(`Error: unimplemented opcode: 0x${opcode.toString(16)}`)
     }
     if(!this.instructions[opcode].exec()) {
       this.reg16[this.regOffsets16.PC] += this.instructions[opcode].length
