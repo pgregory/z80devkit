@@ -49,9 +49,9 @@ DEFINE_MACRO(FLAGS_MMMV1M, (z80, a, b, r) => {
   z80.flags.S = ((r & 0x80) !== 0)
   z80.flags.Z = !(r & 0xFF)
   z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
-  z80.flags.P = (((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80)))
+  z80.flags.P = (((a & 0x80) !== (b & 0x80)) && ((b & 0x80) === (r & 0x80)))
   z80.flags.N = true
-  z80.flags.C = (r > 255)
+  z80.flags.C = (r < 0)
   FLAGS_XY_A(z80, r)
 })
 
@@ -59,7 +59,7 @@ DEFINE_MACRO(FLAGS_MMMV1N, (z80, a, b, r) => {
   z80.flags.S = ((r & 0x80) !== 0)
   z80.flags.Z = !(r & 0xFF)
   z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
-  z80.flags.P = (((a & 0x80) === (b & 0x80)) && ((a & 0x80) !== (r & 0x80)))
+  z80.flags.P = (((a & 0x80) !== (b & 0x80)) && ((b & 0x80) === (r & 0x80)))
   z80.flags.N = true
   FLAGS_XY_A(z80, r)
 })
