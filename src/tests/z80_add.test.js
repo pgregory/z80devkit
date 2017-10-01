@@ -3,7 +3,7 @@ import MMU from '../mmu.js'
 
 import { assert } from 'chai'
 
-import {makeMath8Test} from './math.js'
+import {makeMath8Test, makeMath16Test} from './math.js'
 import {shouldNotAlterFlags, selectRegs, shouldNotAffectRegisters} from './helpers.js'
 
 
@@ -105,256 +105,71 @@ describe('ADD', function() {
     makeMath8Test('add resulting in overflow', 'ADD', 'IY', 'indexed', 1, 0x78, 0x69, 0xE1, [0xFD, 0x86, 0x1], 3, {P: true, N: false}, ["PC", "A"])
     makeMath8Test('add resulting in no overflow', 'ADD', 'IY', 'indexed', 1, 0x78, 0x88, 0x00, [0xFD, 0x86, 0x1], 3, {P: false, N: false}, ["PC", "A"])
   })
-})
 
-// OLD
+  // ADD HL, [BC,DE,SP]
+  const regs3 = {
+    BC: [0x09],
+    DE: [0x19],
+    SP: [0x39],
+  }
+  Object.getOwnPropertyNames(regs3).forEach(
+    (val) => {
+      const opcodes = regs3[val]
+      describe(`ADD HL, ${val}`, function() {
+        makeMath16Test('addition resulting in carry', 'ADD', 'HL', val, 0x4343, 0xEEEE, 0x3231, opcodes, 1, {C: true, H: true, N: false}, ["PC", "HL"])
+        makeMath16Test('addition resulting in no carry', 'ADD', 'HL', val, 0x4343, 0x1111, 0x5454, opcodes, 1, {C: false, H: false, N: false}, ["PC", "HL"])
+      })
+    }
+  )
 
-function makeADDrr_rrTests(regA, regB, opcodes, length) {
-  describe(`ADD ${regA}, ${regB}`, function() {
-    beforeEach(function() {
-      const code = new Uint8Array(opcodes)
-      this.mmu.copyFrom(code, 2)
-      this.z80.reg16[this.z80.regOffsets16.PC] = 2
-      this.initFlags = Object.assign({}, this.z80.flags)
-      this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
-      this.initReg8 = new Uint8Array(this.initRegs)
-      this.initReg16 = new Uint16Array(this.initRegs)
-    })
-    describe('Addition with carry', function() {
-      beforeEach(function() {
-        this.z80.reg16[this.z80.regOffsets16[regA]] = 0x4343
-        this.z80.reg16[this.z80.regOffsets16[regB]] = 0xEEEE
-        this.initReg8.set(this.z80.reg8)
-        this.z80.stepExecution()
-      })
-      it(`should set result in ${regA} to 3231H`, function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16[regA]], 0x3231,
-          `${regA} === 3231H`)
-      })
-      it(`should advance PC by ${length}`, function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + length,
-          `PC === PC + ${length}`)
-      })
-      it('should set the carry flag', function() {
-        assert.equal(this.z80.flags.C, true, 'carry flag set')
-      })
-      it('should set the half carry flag', function() {
-        assert.equal(this.z80.flags.H, true, 'half carry flag set')
-      })
-      it('should reset the add/sub flag', function() {
-        assert.equal(this.z80.flags.N, false, 'add/sub flag reset')
-      })
-      shouldNotAffectRegisters(selectRegs(["PC", regA]))
-    })
-    describe('Addition with no carry', function() {
-      beforeEach(function() {
-        this.z80.reg16[this.z80.regOffsets16[regA]] = 0x4343
-        this.z80.reg16[this.z80.regOffsets16[regB]] = 0x1111
-        this.initReg8.set(this.z80.reg8)
-        this.z80.stepExecution()
-      })
-      it(`should set result in ${regA} to 5454H`, function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16[regA]], 0x5454,
-          `${regA} === 5454H`)
-      })
-      it('should reset the carry flag', function() {
-        assert.equal(this.z80.flags.C, false, 'carry flag reset')
-      })
-      it('should reset the half carry flag', function() {
-        assert.equal(this.z80.flags.C, false, 'carry flag reset')
-      })
-      shouldNotAffectRegisters(selectRegs(["PC", regA]))
-    })
-  })
-}
-
-describe('ADD16', function() {
-  beforeEach(function() {
-    this.mmu = new MMU()
-    this.z80 = new Z80(this.mmu)
-    this.cleanRegs = {}
-  })
-
-  // ADD HL, [BC,DE,HL,SP]
-  makeADDrr_rrTests('HL', 'BC', [0x09], 1)
-  makeADDrr_rrTests('HL', 'DE', [0x19], 1)
-  makeADDrr_rrTests('HL', 'SP', [0x39], 1)
-
-  // Special case for ADD HL, HL
+  // ADD HL, HL
   describe('ADD HL, HL', function() {
-    beforeEach(function() {
-      const code = new Uint8Array([0x29])
-      this.mmu.copyFrom(code, 2)
-      this.z80.reg16[this.z80.regOffsets16.PC] = 2
-      this.initFlags = Object.assign({}, this.z80.flags)
-      this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
-      this.initReg8 = new Uint8Array(this.initRegs)
-      this.initReg16 = new Uint16Array(this.initRegs)
-    })
-    describe('Addition with carry', function() {
-      beforeEach(function() {
-        this.z80.reg16[this.z80.regOffsets16.HL] = 0xA8A1
-        this.initReg8.set(this.z80.reg8)
-        this.z80.stepExecution()
-      })
-      it('should set result in HL to 5142H', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.HL], 0x5142,
-          'HL === 5142H')
-      })
-      it('should advance PC by 1', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 1,
-          'PC === PC + 1')
-      })
-      it('should set the carry flag', function() {
-        assert.equal(this.z80.flags.C, true, 'carry flag set')
-      })
-      it('should set the half carry flag', function() {
-        assert.equal(this.z80.flags.H, true, 'half carry flag set')
-      })
-      it('should reset the add/sub flag', function() {
-        assert.equal(this.z80.flags.N, false, 'add/sub flag reset')
-      })
-      shouldNotAffectRegisters(selectRegs(["PC", "HL"]))
-    })
-    describe('Addition with no carry', function() {
-      beforeEach(function() {
-        this.z80.reg16[this.z80.regOffsets16.HL] = 0x4343
-        this.initReg8.set(this.z80.reg8)
-        this.z80.stepExecution()
-      })
-      it('should set result in HL to 8686H', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.HL], 0x8686,
-          'HL === 8686H')
-      })
-      it('should reset the carry flag', function() {
-        assert.equal(this.z80.flags.C, false, 'carry flag reset')
-      })
-      it('should reset the half carry flag', function() {
-        assert.equal(this.z80.flags.C, false, 'carry flag reset')
-      })
-      shouldNotAffectRegisters(selectRegs(["PC", "HL"]))
-    })
+    makeMath16Test('addition resulting in carry', 'ADD', 'HL', 'HL', 0xA8A1, 0xA8A1, 0x5142, [0x29], 1, {C: true, H: true, N: false}, ["PC", "HL"])
+    makeMath16Test('addition resulting in no carry', 'ADD', 'HL', 'HL', 0x4343, 0x4343, 0x8686, [0x29], 1, {C: false, H: false, N: false}, ["PC", "HL"])
   })
 
   // ADD IX, [BC,DE,SP]
-  makeADDrr_rrTests('IX', 'BC', [0xDD, 0x09], 2)
-  makeADDrr_rrTests('IX', 'DE', [0xDD, 0x19], 2)
-  makeADDrr_rrTests('IX', 'SP', [0xDD, 0x39], 2)
+  const regs4 = {
+    BC: [0xDD, 0x09],
+    DE: [0xDD, 0x19],
+    SP: [0xDD, 0x39],
+  }
+  Object.getOwnPropertyNames(regs4).forEach(
+    (val) => {
+      const opcodes = regs4[val]
+      describe(`ADD IX, ${val}`, function() {
+        makeMath16Test('addition resulting in carry', 'ADD', 'IX', val, 0x4343, 0xEEEE, 0x3231, opcodes, 2, {C: true, H: true, N: false}, ["PC", "IX"])
+        makeMath16Test('addition resulting in no carry', 'ADD', 'IX', val, 0x4343, 0x1111, 0x5454, opcodes, 2, {C: false, H: false, N: false}, ["PC", "IX"])
+      })
+    }
+  )
 
-  // Special case for ADD IX, IX
+  // ADD IX, IX
   describe('ADD IX, IX', function() {
-    beforeEach(function() {
-      const code = new Uint8Array([0xDD, 0x29])
-      this.mmu.copyFrom(code, 2)
-      this.z80.reg16[this.z80.regOffsets16.PC] = 2
-      this.initFlags = Object.assign({}, this.z80.flags)
-      this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
-      this.initReg8 = new Uint8Array(this.initRegs)
-      this.initReg16 = new Uint16Array(this.initRegs)
-    })
-    describe('Addition with carry', function() {
-      beforeEach(function() {
-        this.z80.reg16[this.z80.regOffsets16.IX] = 0xA8A1
-        this.initReg8.set(this.z80.reg8)
-        this.z80.stepExecution()
-      })
-      it('should set result in IX to 5142H', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.IX], 0x5142,
-          'IX === 5142H')
-      })
-      it('should advance PC by 2', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 2,
-          'PC === PC + 2')
-      })
-      it('should set the carry flag', function() {
-        assert.equal(this.z80.flags.C, true, 'carry flag set')
-      })
-      it('should set the half carry flag', function() {
-        assert.equal(this.z80.flags.H, true, 'half carry flag set')
-      })
-      it('should reset the add/sub flag', function() {
-        assert.equal(this.z80.flags.N, false, 'add/sub flag reset')
-      })
-      shouldNotAffectRegisters(selectRegs(["PC", "IX"]))
-    })
-    describe('Addition with no carry', function() {
-      beforeEach(function() {
-        this.z80.reg16[this.z80.regOffsets16.IX] = 0x4343
-        this.initReg8.set(this.z80.reg8)
-        this.z80.stepExecution()
-      })
-      it('should set result in IX to 8686H', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.IX], 0x8686,
-          'IX === 8686H')
-      })
-      it('should reset the carry flag', function() {
-        assert.equal(this.z80.flags.C, false, 'carry flag reset')
-      })
-      it('should reset the half carry flag', function() {
-        assert.equal(this.z80.flags.C, false, 'carry flag reset')
-      })
-      shouldNotAffectRegisters(selectRegs(["PC", "IX"]))
-    })
+    makeMath16Test('addition resulting in carry', 'ADD', 'IX', 'IX', 0xA8A1, 0xA8A1, 0x5142, [0xDD, 0x29], 2, {C: true, H: true, N: false}, ["PC", "IX"])
+    makeMath16Test('addition resulting in no carry', 'ADD', 'IX', 'IX', 0x4343, 0x4343, 0x8686, [0xDD, 0x29], 2, {C: false, H: false, N: false}, ["PC", "IX"])
   })
-  
-  // ADD IY, [BC,DE,SP]
-  makeADDrr_rrTests('IY', 'BC', [0xFD, 0x09], 2)
-  makeADDrr_rrTests('IY', 'DE', [0xFD, 0x19], 2)
-  makeADDrr_rrTests('IY', 'SP', [0xFD, 0x39], 2)
 
-  // Special case for ADD IY, IY
+  // ADD IY, [BC,DE,SP]
+  const regs5 = {
+    BC: [0xFD, 0x09],
+    DE: [0xFD, 0x19],
+    SP: [0xFD, 0x39],
+  }
+  Object.getOwnPropertyNames(regs5).forEach(
+    (val) => {
+      const opcodes = regs5[val]
+      describe(`ADD IY, ${val}`, function() {
+        makeMath16Test('addition resulting in carry', 'ADD', 'IY', val, 0x4343, 0xEEEE, 0x3231, opcodes, 2, {C: true, H: true, N: false}, ["PC", "IY"])
+        makeMath16Test('addition resulting in no carry', 'ADD', 'IY', val, 0x4343, 0x1111, 0x5454, opcodes, 2, {C: false, H: false, N: false}, ["PC", "IY"])
+      })
+    }
+  )
+
+  // ADD IY, IY
   describe('ADD IY, IY', function() {
-    beforeEach(function() {
-      const code = new Uint8Array([0xFD, 0x29])
-      this.mmu.copyFrom(code, 2)
-      this.z80.reg16[this.z80.regOffsets16.PC] = 2
-      this.initFlags = Object.assign({}, this.z80.flags)
-      this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
-      this.initReg8 = new Uint8Array(this.initRegs)
-      this.initReg16 = new Uint16Array(this.initRegs)
-    })
-    describe('Addition with carry', function() {
-      beforeEach(function() {
-        this.z80.reg16[this.z80.regOffsets16.IY] = 0xA8A1
-        this.initReg8.set(this.z80.reg8)
-        this.z80.stepExecution()
-      })
-      it('should set result in IY to 5142H', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.IY], 0x5142,
-          'IY === 5142H')
-      })
-      it('should advance PC by 2', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + 2,
-          'PC === PC + 2')
-      })
-      it('should set the carry flag', function() {
-        assert.equal(this.z80.flags.C, true, 'carry flag set')
-      })
-      it('should set the half carry flag', function() {
-        assert.equal(this.z80.flags.H, true, 'half carry flag set')
-      })
-      it('should reset the add/sub flag', function() {
-        assert.equal(this.z80.flags.N, false, 'add/sub flag reset')
-      })
-      shouldNotAffectRegisters(selectRegs(["PC", "IY"]))
-    })
-    describe('Addition with no carry', function() {
-      beforeEach(function() {
-        this.z80.reg16[this.z80.regOffsets16.IY] = 0x4343
-        this.initReg8.set(this.z80.reg8)
-        this.z80.stepExecution()
-      })
-      it('should set result in IY to 8686H', function() {
-        assert.equal(this.z80.reg16[this.z80.regOffsets16.IY], 0x8686,
-          'IY === 8686H')
-      })
-      it('should reset the carry flag', function() {
-        assert.equal(this.z80.flags.C, false, 'carry flag reset')
-      })
-      it('should reset the half carry flag', function() {
-        assert.equal(this.z80.flags.C, false, 'carry flag reset')
-      })
-      shouldNotAffectRegisters(selectRegs(["PC", "IY"]))
-    })
+    makeMath16Test('addition resulting in carry', 'ADD', 'IY', 'IY', 0xA8A1, 0xA8A1, 0x5142, [0xFD, 0x29], 2, {C: true, H: true, N: false}, ["PC", "IY"])
+    makeMath16Test('addition resulting in no carry', 'ADD', 'IY', 'IY', 0x4343, 0x4343, 0x8686, [0xFD, 0x29], 2, {C: false, H: false, N: false}, ["PC", "IY"])
   })
+
 })
