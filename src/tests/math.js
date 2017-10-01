@@ -2,12 +2,19 @@ import {assert} from 'chai'
 
 import {shouldNotAlterFlags, selectRegs, shouldNotAffectRegisters} from './helpers.js'
 
-function makeMath8Test(desc, op, source, mode, offset, valA, valB, expected, opcodes, length, flags, registersAffected) {
+function makeMath8Test(desc, op, source, mode, offset, valA, valB, expected, opcodes, length, flags, registersAffected, initFlags, initRegs) {
   describe(desc, function() {
     beforeEach(function() {
       const code = new Uint8Array(opcodes)
       this.mmu.copyFrom(code, 2)
       this.z80.reg16[this.z80.regOffsets16.PC] = 2
+      if(initFlags) {
+        Object.getOwnPropertyNames(initFlags).forEach(
+          (val) => {
+            this.z80.flags[val] = initFlags[val]
+          }
+        )
+      }
       this.initFlags = Object.assign({}, this.z80.flags)
       this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
       this.initReg8 = new Uint8Array(this.initRegs)
@@ -54,12 +61,19 @@ function makeMath8Test(desc, op, source, mode, offset, valA, valB, expected, opc
   })
 }
 
-function makeMath16Test(desc, op, dest, source, valA, valB, expected, opcodes, length, flags, registersAffected) {
+function makeMath16Test(desc, op, dest, source, valA, valB, expected, opcodes, length, flags, registersAffected, initFlags, initRegs) {
   describe(desc, function() {
     beforeEach(function() {
       const code = new Uint8Array(opcodes)
       this.mmu.copyFrom(code, 2)
       this.z80.reg16[this.z80.regOffsets16.PC] = 2
+      if(initFlags) {
+        Object.getOwnPropertyNames(initFlags).forEach(
+          (val) => {
+            this.z80.flags[val] = initFlags[val]
+          }
+        )
+      }
       this.initFlags = Object.assign({}, this.z80.flags)
       this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
       this.initReg8 = new Uint8Array(this.initRegs)
