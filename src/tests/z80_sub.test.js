@@ -13,37 +13,45 @@ describe('SUB', function() {
   })
 
   // SUB A, [B,C,D,E,H,L]
-  const regs = {
-    B: 0x0,
-    C: 0x1,
-    D: 0x2,
-    E: 0x3,
-    H: 0x4,
-    L: 0x5,
-  }
-  Object.getOwnPropertyNames(regs).forEach(
-    (val) => {
-      const opcode = 0x90 | (regs[val])
-      describe(`SUB A, ${val}`, function() {
-        makeMath8Test('subtract resulting in carry', 'SUB', val, 'register', 0, 0x00, 0x01, 0xFF, [opcode], 1, {C: true, S: true, N: true}, ["PC", "A"])
-        makeMath8Test('subtract resulting in no carry', 'SUB', val, 'register', 0, 0x02, 0x01, 0x01, [opcode], 1, {C: false, N: true}, ["PC", "A"])
-        makeMath8Test('subtract resulting in zero', 'SUB', val, 'register', 0, 0x01, 0x01, 0x00, [opcode], 1, {Z: true, N: true}, ["PC", "A"])
-        makeMath8Test('subtract resulting in overflow', 'SUB', val, 'register', 0, 0x80, 0x10, 0x70, [opcode], 1, {P: true, N: true}, ["PC", "A"])
-      })
+  const combinations8bit = [
+    { source: 'B', mode: 'register', offset: 0, opcodes: [0x90], length: 1 },
+    { source: 'C', mode: 'register', offset: 0, opcodes: [0x91], length: 1 },
+    { source: 'D', mode: 'register', offset: 0, opcodes: [0x92], length: 1 },
+    { source: 'E', mode: 'register', offset: 0, opcodes: [0x93], length: 1 },
+    { source: 'H', mode: 'register', offset: 0, opcodes: [0x94], length: 1 },
+    { source: 'L', mode: 'register', offset: 0, opcodes: [0x95], length: 1 },
+    { source: 'HL', mode: 'register indirect', offset: 0, opcodes: [0x96], length: 1 },
+    { source: 'IX', mode: 'indexed', offset: 1, opcodes: [0xDD, 0x96, 0x01], length: 3 },
+    { source: 'IY', mode: 'indexed', offset: 1, opcodes: [0xFD, 0x96, 0x01], length: 3 },
+  ]
+  for(let i = 0; i < combinations8bit.length; i += 1) {
+    const c = combinations8bit[i]
+    let desc = ''
+    switch(c.mode) {
+      case 'register indirect':
+        desc = `SUB A, (${c.source})`
+        break
+      case 'indexed':
+        desc = `SUB A, (${c.source}+d)`
+        break
+      case 'register':
+      default:
+        desc = `SUB A, ${c.source}`
+        break
     }
-  )
+    describe(desc, function() {
+      makeMath8Test('subtract resulting in carry', 'SUB', c.source, c.mode, c.offset, 0x00, 0x01, 0xFF, c.opcodes, c.length, {C: true, S: true, N: true}, ["PC", "A"])
+      makeMath8Test('subtract resulting in no carry', 'SUB', c.source, c.mode, c.offset, 0x02, 0x01, 0x01, c.opcodes, c.length, {C: false, N: true}, ["PC", "A"])
+      makeMath8Test('subtract resulting in zero', 'SUB', c.source, c.mode, c.offset, 0x01, 0x01, 0x00, c.opcodes, c.length, {Z: true, N: true}, ["PC", "A"])
+      makeMath8Test('subtract resulting in overflow', 'SUB', c.source, c.mode, c.offset, 0x80, 0x10, 0x70, c.opcodes, c.length, {P: true, N: true}, ["PC", "A"])
+    })
+  }
+  
   // SUB A,A
   describe(`SUB A, A`, function() {
     makeMath8Test('subtract resulting in zero', 'SUB', 'A', 'register', 0, 0x81, 0x81, 0x00, [0x97], 1, {Z: true, N: true}, ["PC", "A"])
   })
 
-  // SUB A, (HL)
-  describe('SUB A, (HL)', function() {
-    makeMath8Test('subtract resulting in carry', 'SUB', 'HL', 'register indirect', 0, 0x00, 0x01, 0xFF, [0x96], 1, {C: true, S: true, N: true}, ["PC", "A"])
-    makeMath8Test('subtract resulting in no carry', 'SUB', 'HL', 'register indirect', 0, 0x02, 0x01, 0x01, [0x96], 1, {C: false, N: true}, ["PC", "A"])
-    makeMath8Test('subtract resulting in zero', 'SUB', 'HL', 'register indirect', 0, 0x01, 0x01, 0x00, [0x96], 1, {Z: true, N: true}, ["PC", "A"])
-    makeMath8Test('subtract resulting in overflow', 'SUB', 'HL', 'register indirect', 0, 0x80, 0x10, 0x70, [0x96], 1, {P: true, N: true}, ["PC", "A"])
-  })
 
   // SUB A, n 
   describe('SUB A, n', function() {
@@ -53,19 +61,4 @@ describe('SUB', function() {
     makeMath8Test('subtract resulting in overflow', 'SUB', null, 'immediate', 1, 0x80, 0x10, 0x70, [0xD6, 0x10], 2, {P: true, N: true}, ["PC", "A"])
   })
 
-  // SUB A, (IX+d)
-  describe('SUB A, (IX+d)', function() {
-    makeMath8Test('subtract resulting in carry', 'SUB', 'IX', 'indexed', 1, 0x00, 0x01, 0xFF, [0xDD, 0x96, 0x1], 3, {C: true, S: true, N: true}, ["PC", "A"])
-    makeMath8Test('subtract resulting in no carry', 'SUB', 'IX', 'indexed', 1, 0x02, 0x01, 0x01, [0xDD, 0x96, 0x1], 3, {C: false, N: true}, ["PC", "A"])
-    makeMath8Test('subtract resulting in zero', 'SUB', 'IX', 'indexed', 1, 0x01, 0x01, 0x00, [0xDD, 0x96, 0x1], 3, {Z: true, N: true}, ["PC", "A"])
-    makeMath8Test('subtract resulting in overflow', 'SUB', 'IX', 'indexed', 1, 0x80, 0x10, 0x70, [0xDD, 0x96, 0x1], 3, {P: true, N: true}, ["PC", "A"])
-  })
-
-  // SUB A, (IY+d)
-  describe('SUB A, (IY+d)', function() {
-    makeMath8Test('subtract resulting in carry', 'SUB', 'IY', 'indexed', 1, 0x00, 0x01, 0xFF, [0xFD, 0x96, 0x1], 3, {C: true, S: true, N: true}, ["PC", "A"])
-    makeMath8Test('subtract resulting in no carry', 'SUB', 'IY', 'indexed', 1, 0x02, 0x01, 0x01, [0xFD, 0x96, 0x1], 3, {C: false, N: true}, ["PC", "A"])
-    makeMath8Test('subtract resulting in zero', 'SUB', 'IY', 'indexed', 1, 0x01, 0x01, 0x00, [0xFD, 0x96, 0x1], 3, {Z: true, N: true}, ["PC", "A"])
-    makeMath8Test('subtract resulting in overflow', 'SUB', 'IY', 'indexed', 1, 0x80, 0x10, 0x70, [0xFD, 0x96, 0x1], 3, {P: true, N: true}, ["PC", "A"])
-  })
 })
