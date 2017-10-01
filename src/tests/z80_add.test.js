@@ -72,56 +72,28 @@ describe('ADD', function() {
     makeMath8Test('add resulting in no overflow', 'ADD', null, 'immediate', 1, 0x78, 0x88, 0x00, [0xC6, 0x88], 2, {P: false, N: false}, ["PC", "A"])
   })
 
-  // ADD HL, [BC,DE,SP]
-  const regs3 = {
-    BC: [0x09],
-    DE: [0x19],
-    SP: [0x39],
-  }
-  Object.getOwnPropertyNames(regs3).forEach(
-    (val) => {
-      const opcodes = regs3[val]
-      describe(`ADD HL, ${val}`, function() {
-        makeMath16Test('addition resulting in carry', 'ADD', 'HL', val, 0x4343, 0xEEEE, 0x3231, opcodes, 1, {C: true, H: true, N: false}, ["PC", "HL"])
-        makeMath16Test('addition resulting in no carry', 'ADD', 'HL', val, 0x4343, 0x1111, 0x5454, opcodes, 1, {C: false, H: false, N: false}, ["PC", "HL"])
-      })
-    }
-  )
-
-  // ADD HL, HL
-  describe('ADD HL, HL', function() {
-    makeMath16Test('addition resulting in carry', 'ADD', 'HL', 'HL', 0xA8A1, 0xA8A1, 0x5142, [0x29], 1, {C: true, H: true, N: false}, ["PC", "HL"])
-    makeMath16Test('addition resulting in no carry', 'ADD', 'HL', 'HL', 0x4343, 0x4343, 0x8686, [0x29], 1, {C: false, H: false, N: false}, ["PC", "HL"])
-  })
-
-  // ADD [IX,IY], [BC,DE,SP]
+  // ADD [HL,IX,IY], [BC,DE,HL,IX,IY,SP]
   const combinations16bit = [
+    { dest: 'HL', source: 'BC', opcodes: [0x09], length: 1 },
+    { dest: 'HL', source: 'DE', opcodes: [0x19], length: 1 },
+    { dest: 'HL', source: 'HL', opcodes: [0x29], length: 1 },
+    { dest: 'HL', source: 'SP', opcodes: [0x39], length: 1 },
     { dest: 'IX', source: 'BC', opcodes: [0xDD, 0x09], length: 2 },
     { dest: 'IX', source: 'DE', opcodes: [0xDD, 0x19], length: 2 },
+    { dest: 'IX', source: 'IX', opcodes: [0xDD, 0x29], length: 2 },
     { dest: 'IX', source: 'SP', opcodes: [0xDD, 0x39], length: 2 },
     { dest: 'IY', source: 'BC', opcodes: [0xFD, 0x09], length: 2 },
     { dest: 'IY', source: 'DE', opcodes: [0xFD, 0x19], length: 2 },
+    { dest: 'IY', source: 'IY', opcodes: [0xFD, 0x29], length: 2 },
     { dest: 'IY', source: 'SP', opcodes: [0xFD, 0x39], length: 2 },
   ]
 
   for(let i = 0; i < combinations16bit.length; i += 1) {
     const c = combinations16bit[i]
     describe(`ADD ${c.dest}, ${c.source}`, function() {
-      makeMath16Test('addition resulting in carry', 'ADD', c.dest, c.source, 0x4343, 0xEEEE, 0x3231, c.opcodes, c.length, {C: true, H: true, N: false}, ["PC", c.dest])
-      makeMath16Test('addition resulting in no carry', 'ADD', c.dest, c.source, 0x4343, 0x1111, 0x5454, c.opcodes, c.length, {C: false, H: false, N: false}, ["PC", c.dest])
+      makeMath16Test('addition resulting in carry', 'ADD', c.dest, c.source, 0xA8A1, 0xA8A1, 0x5142, c.opcodes, c.length, {C: true, H: true, N: false}, ["PC", c.dest])
+      makeMath16Test('addition resulting in no carry', 'ADD', c.dest, c.source, 0x4343, 0x4343, 0x8686, c.opcodes, c.length, {C: false, H: false, N: false}, ["PC", c.dest])
     })
   }
-
-  // ADD IX, IX
-  describe('ADD IX, IX', function() {
-    makeMath16Test('addition resulting in carry', 'ADD', 'IX', 'IX', 0xA8A1, 0xA8A1, 0x5142, [0xDD, 0x29], 2, {C: true, H: true, N: false}, ["PC", "IX"])
-    makeMath16Test('addition resulting in no carry', 'ADD', 'IX', 'IX', 0x4343, 0x4343, 0x8686, [0xDD, 0x29], 2, {C: false, H: false, N: false}, ["PC", "IX"])
-  })
-
-  // ADD IY, IY
-  describe('ADD IY, IY', function() {
-    makeMath16Test('addition resulting in carry', 'ADD', 'IY', 'IY', 0xA8A1, 0xA8A1, 0x5142, [0xFD, 0x29], 2, {C: true, H: true, N: false}, ["PC", "IY"])
-    makeMath16Test('addition resulting in no carry', 'ADD', 'IY', 'IY', 0x4343, 0x4343, 0x8686, [0xFD, 0x29], 2, {C: false, H: false, N: false}, ["PC", "IY"])
-  })
 
 })
