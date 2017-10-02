@@ -45,31 +45,31 @@ describe('ADD', function() {
         break
     }
     describe(desc, function() {
-      makeMath8Test('add resulting in carry', 'ADD', c.source, c.mode, c.offset, 0x81, 0x80, 0x01, c.opcodes, c.length, {C: true, N: false}, ["PC", "A"])
-      makeMath8Test('add resulting in no carry', 'ADD', c.source, c.mode, c.offset, 0x21, 0x20, 0x41, c.opcodes, c.length, {C: false, N: false}, ["PC", "A"])
-      makeMath8Test('add resulting in zero', 'ADD', c.source, c.mode, c.offset, 0x00, 0x00, 0x00, c.opcodes, c.length, {Z: true, N: false}, ["PC", "A"])
-      makeMath8Test('add resulting in zero and carry', 'ADD', c.source, c.mode, c.offset, 0x80, 0x80, 0x00, c.opcodes, c.length, {C: true, Z: true, N: false}, ["PC", "A"])
-      makeMath8Test('add resulting in overflow', 'ADD', c.source, c.mode, c.offset, 0x78, 0x69, 0xE1, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"])
-      makeMath8Test('add resulting in no overflow', 'ADD', c.source, c.mode, c.offset, 0x78, 0x88, 0x00, c.opcodes, c.length, {P: false, N: false}, ["PC", "A"])
+      makeMath8Test('add resulting in carry', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x81, 0x80, 0x01, c.opcodes, c.length, {C: true, N: false}, ["PC", "A"])
+      makeMath8Test('add resulting in no carry', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x21, 0x20, 0x41, c.opcodes, c.length, {C: false, N: false}, ["PC", "A"])
+      makeMath8Test('add resulting in zero', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x00, 0x00, 0x00, c.opcodes, c.length, {Z: true, N: false}, ["PC", "A"])
+      makeMath8Test('add resulting in zero and carry', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x80, 0x80, 0x00, c.opcodes, c.length, {C: true, Z: true, N: false}, ["PC", "A"])
+      makeMath8Test('add resulting in overflow', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x78, 0x69, 0xE1, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"])
+      makeMath8Test('add resulting in no overflow', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x78, 0x88, 0x00, c.opcodes, c.length, {P: false, N: false}, ["PC", "A"])
     })
   }
 
   // ADD A,A
   describe('ADD A, A', function() {
-    makeMath8Test('add resulting in carry and overflow', 'ADD', 'A', 'register', 0, 0x81, 0x81, 0x02, [0x87], 1, {C: true, P: true, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in no carry or overflow', 'ADD', 'A', 'register', 0, 0x21, 0x21, 0x42, [0x87], 1, {C: false, P: false, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in zero with no carry', 'ADD', 'A', 'register', 0, 0x00, 0x00, 0x00, [0x87], 1, {C: false, Z: true, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in zero and carry', 'ADD', 'A', 'register', 0, 0x80, 0x80, 0x00, [0x87], 1, {C: true, Z: true, N: false}, ["PC", "A"])
+    makeMath8Test('add resulting in carry and overflow', 'ADD', 'A', 'register', 'A', 'register', 0, 0x81, 0x81, 0x02, [0x87], 1, {C: true, P: true, N: false}, ["PC", "A"])
+    makeMath8Test('add resulting in no carry or overflow', 'ADD', 'A', 'register', 'A', 'register', 0, 0x21, 0x21, 0x42, [0x87], 1, {C: false, P: false, N: false}, ["PC", "A"])
+    makeMath8Test('add resulting in zero with no carry', 'ADD', 'A', 'register', 'A', 'register', 0, 0x00, 0x00, 0x00, [0x87], 1, {C: false, Z: true, N: false}, ["PC", "A"])
+    makeMath8Test('add resulting in zero and carry', 'ADD', 'A', 'register', 'A', 'register', 0, 0x80, 0x80, 0x00, [0x87], 1, {C: true, Z: true, N: false}, ["PC", "A"])
   })
 
   // ADD A, n 
   describe('ADD A, n', function() {
-    makeMath8Test('add resulting in carry', 'ADD', null, 'immediate', 1, 0x81, 0x80, 0x01, [0xC6, 0x80], 2, {C: true, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in no carry', 'ADD', null, 'immediate', 1, 0x21, 0x20, 0x41, [0xC6, 0x20], 2, {C: false, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in zero', 'ADD', null, 'immediate', 1, 0x00, 0x00, 0x00, [0xC6, 0x00], 2, {Z: true, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in zero and carry', 'ADD', null, 'immediate', 1, 0x80, 0x80, 0x00, [0xC6, 0x80], 2, {C: true, Z: true, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in overflow', 'ADD', null, 'immediate', 1, 0x78, 0x69, 0xE1, [0xC6, 0x69], 2, {P: true, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in no overflow', 'ADD', null, 'immediate', 1, 0x78, 0x88, 0x00, [0xC6, 0x88], 2, {P: false, N: false}, ["PC", "A"])
+    makeMath8Test('add resulting in carry', 'ADD', 'A', 'register', null, 'immediate', 1, 0x81, 0x80, 0x01, [0xC6, 0x80], 2, {C: true, N: false}, ["PC", "A"])
+    makeMath8Test('add resulting in no carry', 'ADD', 'A', 'register', null, 'immediate', 1, 0x21, 0x20, 0x41, [0xC6, 0x20], 2, {C: false, N: false}, ["PC", "A"])
+    makeMath8Test('add resulting in zero', 'ADD', 'A', 'register', null, 'immediate', 1, 0x00, 0x00, 0x00, [0xC6, 0x00], 2, {Z: true, N: false}, ["PC", "A"])
+    makeMath8Test('add resulting in zero and carry', 'ADD', 'A', 'register', null, 'immediate', 1, 0x80, 0x80, 0x00, [0xC6, 0x80], 2, {C: true, Z: true, N: false}, ["PC", "A"])
+    makeMath8Test('add resulting in overflow', 'ADD', 'A', 'register', null, 'immediate', 1, 0x78, 0x69, 0xE1, [0xC6, 0x69], 2, {P: true, N: false}, ["PC", "A"])
+    makeMath8Test('add resulting in no overflow', 'ADD', 'A', 'register', null, 'immediate', 1, 0x78, 0x88, 0x00, [0xC6, 0x88], 2, {P: false, N: false}, ["PC", "A"])
   })
 
   // ADD [HL,IX,IY], [BC,DE,HL,IX,IY,SP]

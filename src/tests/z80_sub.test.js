@@ -40,25 +40,25 @@ describe('SUB', function() {
         break
     }
     describe(desc, function() {
-      makeMath8Test('subtract resulting in carry', 'SUB', c.source, c.mode, c.offset, 0x00, 0x01, 0xFF, c.opcodes, c.length, {C: true, S: true, N: true}, ["PC", "A"])
-      makeMath8Test('subtract resulting in no carry', 'SUB', c.source, c.mode, c.offset, 0x02, 0x01, 0x01, c.opcodes, c.length, {C: false, N: true}, ["PC", "A"])
-      makeMath8Test('subtract resulting in zero', 'SUB', c.source, c.mode, c.offset, 0x01, 0x01, 0x00, c.opcodes, c.length, {Z: true, N: true}, ["PC", "A"])
-      makeMath8Test('subtract resulting in overflow', 'SUB', c.source, c.mode, c.offset, 0x80, 0x10, 0x70, c.opcodes, c.length, {P: true, N: true}, ["PC", "A"])
+      makeMath8Test('subtract resulting in carry', 'SUB', 'A', 'register', c.source, c.mode, c.offset, 0x00, 0x01, 0xFF, c.opcodes, c.length, {C: true, S: true, N: true}, ["PC", "A"])
+      makeMath8Test('subtract resulting in no carry', 'SUB', 'A', 'register', c.source, c.mode, c.offset, 0x02, 0x01, 0x01, c.opcodes, c.length, {C: false, N: true}, ["PC", "A"])
+      makeMath8Test('subtract resulting in zero', 'SUB', 'A', 'register', c.source, c.mode, c.offset, 0x01, 0x01, 0x00, c.opcodes, c.length, {Z: true, N: true}, ["PC", "A"])
+      makeMath8Test('subtract resulting in overflow', 'SUB', 'A', 'register', c.source, c.mode, c.offset, 0x80, 0x10, 0x70, c.opcodes, c.length, {P: true, N: true}, ["PC", "A"])
     })
   }
   
   // SUB A,A
   describe(`SUB A, A`, function() {
-    makeMath8Test('subtract resulting in zero', 'SUB', 'A', 'register', 0, 0x81, 0x81, 0x00, [0x97], 1, {Z: true, N: true}, ["PC", "A"])
+    makeMath8Test('subtract resulting in zero', 'SUB', 'A', 'register', 'A', 'register', 0, 0x81, 0x81, 0x00, [0x97], 1, {Z: true, N: true}, ["PC", "A"])
   })
 
 
   // SUB A, n 
   describe('SUB A, n', function() {
-    makeMath8Test('subtract resulting in carry', 'SUB', null, 'immediate', 1, 0x00, 0x01, 0xFF, [0xD6, 0x01], 2, {C: true, S: true, N: true}, ["PC", "A"])
-    makeMath8Test('subtract resulting in no carry', 'SUB', null, 'immediate', 1, 0x02, 0x01, 0x01, [0xD6, 0x01], 2, {C: false, N: true}, ["PC", "A"])
-    makeMath8Test('subtract resulting in zero', 'SUB', null, 'immediate', 1, 0x01, 0x01, 0x00, [0xD6, 0x01], 2, {Z: true, N: true}, ["PC", "A"])
-    makeMath8Test('subtract resulting in overflow', 'SUB', null, 'immediate', 1, 0x80, 0x10, 0x70, [0xD6, 0x10], 2, {P: true, N: true}, ["PC", "A"])
+    makeMath8Test('subtract resulting in carry', 'SUB', 'A', 'register', null, 'immediate', 1, 0x00, 0x01, 0xFF, [0xD6, 0x01], 2, {C: true, S: true, N: true}, ["PC", "A"])
+    makeMath8Test('subtract resulting in no carry', 'SUB', 'A', 'register', null, 'immediate', 1, 0x02, 0x01, 0x01, [0xD6, 0x01], 2, {C: false, N: true}, ["PC", "A"])
+    makeMath8Test('subtract resulting in zero', 'SUB', 'A', 'register', null, 'immediate', 1, 0x01, 0x01, 0x00, [0xD6, 0x01], 2, {Z: true, N: true}, ["PC", "A"])
+    makeMath8Test('subtract resulting in overflow', 'SUB', 'A', 'register', null, 'immediate', 1, 0x80, 0x10, 0x70, [0xD6, 0x10], 2, {P: true, N: true}, ["PC", "A"])
   })
 
 })

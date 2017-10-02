@@ -47,25 +47,25 @@ describe('ADC', function() {
         break
     }
     describe(desc, function() {
-      makeMath8Test('add with C == 1 resulting in carry', 'ADC', c.source, c.mode, c.offset, 0x81, 0x81, 0x03, c.opcodes, c.length, {C: true, N: false}, ["PC", "A"], {C: true})
-      makeMath8Test('add with C == 0 resulting in carry', 'ADC', c.source, c.mode, c.offset, 0x81, 0x81, 0x02, c.opcodes, c.length, {C: true, N: false}, ["PC", "A"], {C: false})
+      makeMath8Test('add with C == 1 resulting in carry', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x81, 0x81, 0x03, c.opcodes, c.length, {C: true, N: false}, ["PC", "A"], {C: true})
+      makeMath8Test('add with C == 0 resulting in carry', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x81, 0x81, 0x02, c.opcodes, c.length, {C: true, N: false}, ["PC", "A"], {C: false})
       if(c.source !== 'A') {
-        makeMath8Test('add with C == 1 resulting in zero', 'ADC', c.source, c.mode, c.offset, 0x80, 0x7F, 0x00, c.opcodes, c.length, {Z: true, N: false}, ["PC", "A"], {C: true})
+        makeMath8Test('add with C == 1 resulting in zero', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x80, 0x7F, 0x00, c.opcodes, c.length, {Z: true, N: false}, ["PC", "A"], {C: true})
       }
-      makeMath8Test('add with C == 0 resulting in zero', 'ADC', c.source, c.mode, c.offset, 0x00, 0x00, 0x00, c.opcodes, c.length, {Z: true, N: false}, ["PC", "A"], {C: false})
-      makeMath8Test('add with C == 1 resulting in overflow', 'ADC', c.source, c.mode, c.offset, 0x88, 0x88, 0x11, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"], {C: true})
-      makeMath8Test('add with C == 0 resulting in overflow', 'ADC', c.source, c.mode, c.offset, 0x88, 0x88, 0x10, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"], {C: false})
+      makeMath8Test('add with C == 0 resulting in zero', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x00, 0x00, 0x00, c.opcodes, c.length, {Z: true, N: false}, ["PC", "A"], {C: false})
+      makeMath8Test('add with C == 1 resulting in overflow', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x88, 0x88, 0x11, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"], {C: true})
+      makeMath8Test('add with C == 0 resulting in overflow', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x88, 0x88, 0x10, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"], {C: false})
     })
   }
 
   // ADC A, n
   describe('ADC A, n', function() {
-    makeMath8Test('add with C == 1 resulting in carry', 'ADC', null, 'immediate', 1, 0x81, 0x81, 0x03, [0xCE, 0x81], 2, {C: true, N: false}, ["PC", "A"], {C: true})
-    makeMath8Test('add with C == 0 resulting in carry', 'ADC', null, 'immediate', 1, 0x81, 0x81, 0x02, [0xCE, 0x81], 2, {C: true, N: false}, ["PC", "A"], {C: false})
-    makeMath8Test('add with C == 1 resulting in zero', 'ADC', null, 'immediate', 1, 0x80, 0x7F, 0x00, [0xCE, 0x7F], 2, {Z: true, N: false}, ["PC", "A"], {C: true})
-    makeMath8Test('add with C == 0 resulting in zero', 'ADC', null, 'immediate', 1, 0x00, 0x00, 0x00, [0xCE, 0x00], 2, {Z: true, N: false}, ["PC", "A"], {C: false})
-    makeMath8Test('add with C == 1 resulting in overflow', 'ADC', null, 'immediate', 1, 0x88, 0x88, 0x11, [0xCE, 0x88], 2, {P: true, N: false}, ["PC", "A"], {C: true})
-    makeMath8Test('add with C == 0 resulting in overflow', 'ADC', null, 'immediate', 1, 0x88, 0x88, 0x10, [0xCE, 0x88], 2, {P: true, N: false}, ["PC", "A"], {C: false})
+    makeMath8Test('add with C == 1 resulting in carry', 'ADC', 'A', 'register', null, 'immediate', 1, 0x81, 0x81, 0x03, [0xCE, 0x81], 2, {C: true, N: false}, ["PC", "A"], {C: true})
+    makeMath8Test('add with C == 0 resulting in carry', 'ADC', 'A', 'register', null, 'immediate', 1, 0x81, 0x81, 0x02, [0xCE, 0x81], 2, {C: true, N: false}, ["PC", "A"], {C: false})
+    makeMath8Test('add with C == 1 resulting in zero', 'ADC', 'A', 'register', null, 'immediate', 1, 0x80, 0x7F, 0x00, [0xCE, 0x7F], 2, {Z: true, N: false}, ["PC", "A"], {C: true})
+    makeMath8Test('add with C == 0 resulting in zero', 'ADC', 'A', 'register', null, 'immediate', 1, 0x00, 0x00, 0x00, [0xCE, 0x00], 2, {Z: true, N: false}, ["PC", "A"], {C: false})
+    makeMath8Test('add with C == 1 resulting in overflow', 'ADC', 'A', 'register', null, 'immediate', 1, 0x88, 0x88, 0x11, [0xCE, 0x88], 2, {P: true, N: false}, ["PC", "A"], {C: true})
+    makeMath8Test('add with C == 0 resulting in overflow', 'ADC', 'A', 'register', null, 'immediate', 1, 0x88, 0x88, 0x10, [0xCE, 0x88], 2, {P: true, N: false}, ["PC", "A"], {C: false})
   })
 
   const combinations16bit = [

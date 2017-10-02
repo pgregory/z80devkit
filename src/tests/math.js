@@ -2,7 +2,7 @@ import {assert} from 'chai'
 
 import {shouldNotAlterFlags, selectRegs, shouldNotAffectRegisters} from './helpers.js'
 
-function makeMath8Test(desc, op, source, mode, offset, valA, valB, expected, opcodes, length, flags, registersAffected, initFlags, initRegs) {
+function makeMath8Test(desc, op, dest, destmode, source, sourcemode, offset, valA, valB, expected, opcodes, length, flags, registersAffected, initFlags, initRegs) {
   describe(desc, function() {
     beforeEach(function() {
       const code = new Uint8Array(opcodes)
@@ -19,8 +19,8 @@ function makeMath8Test(desc, op, source, mode, offset, valA, valB, expected, opc
       this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
       this.initReg8 = new Uint8Array(this.initRegs)
       this.initReg16 = new Uint16Array(this.initRegs)
-      this.z80.reg8[this.z80.regOffsets8.A] = valA
-      switch(mode) {
+      this.z80.reg8[this.z80.regOffsets8[dest]] = valA
+      switch(sourcemode) {
         case 'register':
           this.z80.reg8[this.z80.regOffsets8[source]] = valB
           break
@@ -41,7 +41,27 @@ function makeMath8Test(desc, op, source, mode, offset, valA, valB, expected, opc
     })
     // Check result
     it(`should set the expected result ${expected}`, function() {
-      assert.equal(this.z80.reg8[this.z80.regOffsets8.A], expected, `A === ${expected}`)
+      switch(destmode) {
+        case 'register':
+          assert.equal(this.z80.reg8[this.z80.regOffsets8[dest]], expected, `${dest} === ${expected}`)
+          break
+        case 'register indirect':
+          {
+            const addr = this.z80.reg16[this.z80.regOffsets16[dest]]
+            const val = this.mmu.readByte(addr)
+            assert.equal(val, expected, `(${dest}) === ${expected}`)
+          }
+          break
+        case 'indexed':
+          {
+            const addr = this.z80.reg16[this.z80.regOffsets16[dest]]
+            const val = this.mmu.readByte(addr + offset)
+            assert.equal(val, expected, `(${dest}) === ${expected}`)
+          }
+          break
+        default:
+          break
+      }     
     })
     // Check PC is updated appropriately.
     it(`should advance PC by ${length}`, function() {
