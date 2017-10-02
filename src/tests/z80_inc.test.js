@@ -67,9 +67,7 @@ describe('INC', function() {
     const c = combinations16bit[i]
     describe(`INC ${c.dest}`, function() {
       makeMath16Test('increment resulting in zero', 'INC', c.dest, c.dest, 0xFFFF, 0xFFFF, 0x0000, c.opcodes, c.length, {}, ["PC", c.dest])
-      makeMath16Test('increment resulting in overflow', 'INC', c.dest, c.dest, 0x7FFF, 0x7FFF, 0x8000, c.opcodes, c.length, {}, ["PC", c.dest])
-      makeMath16Test('increment resulting in sign', 'INC', c.dest, c.dest, 0x7FFF, 0x7FFF, 0x8000, c.opcodes, c.length, {}, ["PC", c.dest])
-      makeMath16Test('increment resulting in half carry', 'INC', c.dest, c.dest, 0x7FFF, 0x7FFF, 0x8000, c.opcodes, c.length, {}, ["PC", c.dest])
+      makeMath16Test('increment resulting in non zero', 'INC', c.dest, c.dest, 0x0001, 0x0001, 0x0002, c.opcodes, c.length, {}, ["PC", c.dest])
     })
   }
 
