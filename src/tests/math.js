@@ -33,6 +33,8 @@ function makeMath8Test(desc, op, dest, destmode, source, sourcemode, offset, val
           this.mmu.writeByte(offset, valB)
           break
         case 'immediate':
+          // Set the byte after the opcodes to the specified valB
+          this.mmu.writeByte(2 + opcodes.length + offset, valB)
         default:
           break
       }

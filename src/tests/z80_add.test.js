@@ -28,6 +28,7 @@ describe('ADD', function() {
     { source: 'HL', mode: 'register indirect', offset: 0, opcodes: [0x86], length: 1 },
     { source: 'IX', mode: 'indexed', offset: 1, opcodes: [0xDD, 0x86, 0x01], length: 3 },
     { source: 'IY', mode: 'indexed', offset: 1, opcodes: [0xFD, 0x86, 0x01], length: 3 },
+    { source: null, mode: 'immediate', offset: 0, opcodes: [0xC6], length: 2 /* Instruction length to include 'n' byte */ },
   ]
   for(let i = 0; i < combinations8bit.length; i += 1) {
     const c = combinations8bit[i]
@@ -38,6 +39,9 @@ describe('ADD', function() {
         break
       case 'indexed':
         desc = `ADD A, (${c.source}+d)`
+        break
+      case 'immediate':
+        desc = `ADD A, n`
         break
       case 'register':
       default:

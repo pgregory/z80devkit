@@ -29,6 +29,7 @@ describe('ADC', function() {
     { source: 'HL', mode: 'register indirect', offset: 0, opcodes: [0x8E], length: 1 },
     { source: 'IX', mode: 'indexed', offset: 1, opcodes: [0xDD, 0x8E, 0x01], length: 3 },
     { source: 'IY', mode: 'indexed', offset: 1, opcodes: [0xFD, 0x8E, 0x01], length: 3 },
+    { source: null, mode: 'immediate', offset: 0, opcodes: [0xCE], length: 2 /* Instruction length to include 'n' byte */ },
   ]
 
   for(let i = 0; i < combinations8bit.length; i += 1) {
@@ -40,6 +41,9 @@ describe('ADC', function() {
         break
       case 'indexed':
         desc = `ADC A, (${c.source}+d)`
+        break
+      case 'immediate':
+        desc = `ADC A, n`
         break
       case 'register':
       default:
@@ -57,16 +61,6 @@ describe('ADC', function() {
       makeMath8Test('add with C == 0 resulting in overflow', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x88, 0x88, 0x10, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"], {C: false})
     })
   }
-
-  // ADC A, n
-  describe('ADC A, n', function() {
-    makeMath8Test('add with C == 1 resulting in carry', 'ADC', 'A', 'register', null, 'immediate', 1, 0x81, 0x81, 0x03, [0xCE, 0x81], 2, {C: true, N: false}, ["PC", "A"], {C: true})
-    makeMath8Test('add with C == 0 resulting in carry', 'ADC', 'A', 'register', null, 'immediate', 1, 0x81, 0x81, 0x02, [0xCE, 0x81], 2, {C: true, N: false}, ["PC", "A"], {C: false})
-    makeMath8Test('add with C == 1 resulting in zero', 'ADC', 'A', 'register', null, 'immediate', 1, 0x80, 0x7F, 0x00, [0xCE, 0x7F], 2, {Z: true, N: false}, ["PC", "A"], {C: true})
-    makeMath8Test('add with C == 0 resulting in zero', 'ADC', 'A', 'register', null, 'immediate', 1, 0x00, 0x00, 0x00, [0xCE, 0x00], 2, {Z: true, N: false}, ["PC", "A"], {C: false})
-    makeMath8Test('add with C == 1 resulting in overflow', 'ADC', 'A', 'register', null, 'immediate', 1, 0x88, 0x88, 0x11, [0xCE, 0x88], 2, {P: true, N: false}, ["PC", "A"], {C: true})
-    makeMath8Test('add with C == 0 resulting in overflow', 'ADC', 'A', 'register', null, 'immediate', 1, 0x88, 0x88, 0x10, [0xCE, 0x88], 2, {P: true, N: false}, ["PC", "A"], {C: false})
-  })
 
   const combinations16bit = [
     { source: 'BC', opcodes: [0xED, 0x4A], length: 2 },
