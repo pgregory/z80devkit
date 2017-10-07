@@ -55,10 +55,20 @@ DEFINE_MACRO(FLAGS_MMMV1M, (z80, a, b, r) => {
   FLAGS_XY_A(z80, r)
 })
 
-DEFINE_MACRO(FLAGS_MMMP00, (z80, a, b, r) => {
+DEFINE_MACRO(FLAGS_MM0P00, (z80, a, b, r) => {
   z80.flags.S = ((r & 0x80) !== 0)
   z80.flags.Z = !(r & 0xFF)
-  z80.flags.H = ((((a & 0xF) + (b & 0xF)) & 0x10) !== 0)
+  z80.flags.H = false
+  z80.flags.P = z80.getParity(r)
+  z80.flags.N = false
+  z80.flags.C = false
+  FLAGS_XY_A(z80, r)
+})
+
+DEFINE_MACRO(FLAGS_MM1P00, (z80, a, b, r) => {
+  z80.flags.S = ((r & 0x80) !== 0)
+  z80.flags.Z = !(r & 0xFF)
+  z80.flags.H = true
   z80.flags.P = z80.getParity(r)
   z80.flags.N = false
   z80.flags.C = false
@@ -223,7 +233,7 @@ DEFINE_MACRO(AND_R, (z80, r) => {
   const b = z80.reg8[r]
   const res = a & b
   z80.reg8[z80.regOffsets8.A] = res
-  FLAGS_MMMP00(z80, a, b, res)
+  FLAGS_MM1P00(z80, a, b, res)
 })
 
 DEFINE_MACRO(XOR_R, (z80, r) => {
@@ -231,7 +241,7 @@ DEFINE_MACRO(XOR_R, (z80, r) => {
   const b = z80.reg8[r]
   const res = a ^ b
   z80.reg8[z80.regOffsets8.A] = res
-  FLAGS_MMMP00(z80, a, r, res)
+  FLAGS_MM0P00(z80, a, r, res)
 })
 
 DEFINE_MACRO(OR_R, (z80, r) => {
@@ -239,7 +249,7 @@ DEFINE_MACRO(OR_R, (z80, r) => {
   const b = z80.reg8[r]
   const res = a | b
   z80.reg8[z80.regOffsets8.A] = res
-  FLAGS_MMMP00(z80, a, r, res)
+  FLAGS_MM0P00(z80, a, r, res)
 })
 
 DEFINE_MACRO(INC_RR, (z80, r) => {
@@ -1779,7 +1789,7 @@ export default class Z80 {
           const b = z80.mmu.readByte(addr)
           const res = a & b
           z80.reg8[z80.regOffsets8.A] = res
-          FLAGS_MMMP00(z80, a, b, res)
+          FLAGS_MM1P00(z80, a, b, res)
 				},
 				length: 1
 			 },
@@ -1841,7 +1851,7 @@ export default class Z80 {
           const b = z80.mmu.readByte(addr)
           const res = a ^ b
           z80.reg8[z80.regOffsets8.A] = res
-          FLAGS_MMMP00(z80, a, b, res)
+          FLAGS_MM0P00(z80, a, b, res)
 				},
 				length: 1
 			 },
@@ -1903,7 +1913,7 @@ export default class Z80 {
           const b = z80.mmu.readByte(addr)
           const res = a | b
           z80.reg8[z80.regOffsets8.A] = res
-          FLAGS_MMMP00(z80, a, b, res)
+          FLAGS_MM0P00(z80, a, b, res)
 				},
 				length: 1
 			 },
@@ -2290,7 +2300,7 @@ export default class Z80 {
           const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
           const res = a & b
           z80.reg8[z80.regOffsets8.A] = res
-          FLAGS_MMMP00(z80, a, b, res)
+          FLAGS_MM1P00(z80, a, b, res)
 				},
 				length: 2
 			 },
@@ -2363,7 +2373,7 @@ export default class Z80 {
           const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC])
           const res = a ^ b
           z80.reg8[z80.regOffsets8.A] = res
-          FLAGS_MMMP00(z80, a, b, res)
+          FLAGS_MM0P00(z80, a, b, res)
 				},
 				length: 2
 			 },
@@ -2425,7 +2435,7 @@ export default class Z80 {
           const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
           const res = a | b
           z80.reg8[z80.regOffsets8.A] = res
-          FLAGS_MMMP00(z80, a, b, res)
+          FLAGS_MM0P00(z80, a, b, res)
 				},
 				length: 2
 			 },
