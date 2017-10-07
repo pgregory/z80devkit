@@ -2370,7 +2370,7 @@ export default class Z80 {
 				name: "XOR \\1H",
 				exec() {
           const a = z80.reg8[z80.regOffsets8.A]
-          const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC])
+          const b = z80.mmu.readByte(z80.reg16[z80.regOffsets16.PC] + 1)
           const res = a ^ b
           z80.reg8[z80.regOffsets8.A] = res
           FLAGS_MM0P00(z80, a, b, res)
