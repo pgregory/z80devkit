@@ -3,8 +3,7 @@ import MMU from '../mmu.js'
 
 import { assert } from 'chai'
 
-import {makeMath8Test, makeMath16Test} from './math.js'
-import {shouldNotAlterFlags, selectRegs, shouldNotAffectRegisters} from './helpers.js'
+import {makeGenericTest, modeText} from './helpers.js'
 
 describe('ADC', function() {
   beforeEach(function() {
@@ -34,31 +33,16 @@ describe('ADC', function() {
 
   for(let i = 0; i < combinations8bit.length; i += 1) {
     const c = combinations8bit[i]
-    let desc = ''
-    switch(c.mode) {
-      case 'register indirect':
-        desc = `ADC A, (${c.source})`
-        break
-      case 'indexed':
-        desc = `ADC A, (${c.source}+d)`
-        break
-      case 'immediate':
-        desc = `ADC A, n`
-        break
-      case 'register':
-      default:
-        desc = `ADC A, ${c.source}`
-        break
-    }
+    let desc = `ADC A, ${modeText(c.source, c.mode)}`
     describe(desc, function() {
-      makeMath8Test('add with C == 1 resulting in carry', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x81, 0x81, 0x03, c.opcodes, c.length, {C: true, N: false}, ["PC", "A"], {C: true})
-      makeMath8Test('add with C == 0 resulting in carry', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x81, 0x81, 0x02, c.opcodes, c.length, {C: true, N: false}, ["PC", "A"], {C: false})
+      makeGenericTest('add with C == 1 resulting in carry', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x81, 0x81, 0x03, c.opcodes, c.length, {C: true, N: false}, ["PC", "A"], {C: true})
+      makeGenericTest('add with C == 0 resulting in carry', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x81, 0x81, 0x02, c.opcodes, c.length, {C: true, N: false}, ["PC", "A"], {C: false})
       if(c.source !== 'A') {
-        makeMath8Test('add with C == 1 resulting in zero', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x80, 0x7F, 0x00, c.opcodes, c.length, {Z: true, N: false}, ["PC", "A"], {C: true})
+        makeGenericTest('add with C == 1 resulting in zero', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x80, 0x7F, 0x00, c.opcodes, c.length, {Z: true, N: false}, ["PC", "A"], {C: true})
       }
-      makeMath8Test('add with C == 0 resulting in zero', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x00, 0x00, 0x00, c.opcodes, c.length, {Z: true, N: false}, ["PC", "A"], {C: false})
-      makeMath8Test('add with C == 1 resulting in overflow', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x88, 0x88, 0x11, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"], {C: true})
-      makeMath8Test('add with C == 0 resulting in overflow', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x88, 0x88, 0x10, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"], {C: false})
+      makeGenericTest('add with C == 0 resulting in zero', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x00, 0x00, 0x00, c.opcodes, c.length, {Z: true, N: false}, ["PC", "A"], {C: false})
+      makeGenericTest('add with C == 1 resulting in overflow', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x88, 0x88, 0x11, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"], {C: true})
+      makeGenericTest('add with C == 0 resulting in overflow', 'ADC', 'A', 'register', c.source, c.mode, c.offset, 0x88, 0x88, 0x10, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"], {C: false})
     })
   }
 
@@ -72,14 +56,14 @@ describe('ADC', function() {
   for(let i = 0; i < combinations16bit.length; i += 1) {
     const c = combinations16bit[i]
     describe.skip(`ADC HL, ${c.source}`, function() {
-      makeMath16Test('add with C == 1 resulting in carry', 'ADC', 'HL', c.source, 0x8181, 0x8181, 0x0303, c.opcodes, c.length, {C: true, N: false}, ["PC", "HL"], {C: true})
-      makeMath16Test('add with C == 0 resulting in carry', 'ADC', 'HL', c.source, 0x8181, 0x8181, 0x0302, c.opcodes, c.length, {C: true, N: false}, ["PC", "HL"], {C: false})
+      makeGenericTest('add with C == 1 resulting in carry', 'ADC', 'HL', 'register16', c.source, 'register16', 0, 0x8181, 0x8181, 0x0303, c.opcodes, c.length, {C: true, N: false}, ["PC", "HL"], {C: true})
+      makeGenericTest('add with C == 0 resulting in carry', 'ADC', 'HL', 'register16', c.source, 'register16', 0, 0x8181, 0x8181, 0x0302, c.opcodes, c.length, {C: true, N: false}, ["PC", "HL"], {C: false})
       if(c.source !== 'HL') {
-        makeMath16Test('add with C == 1 resulting in zero', 'ADC', 'HL', c.source, 0x8000, 0x7FFF, 0x0000, c.opcodes, c.length, {Z: true, N: false}, ["PC", "HL"], {C: true})
+        makeGenericTest('add with C == 1 resulting in zero', 'ADC', 'HL', 'register16', c.source, 'register16', 0, 0x8000, 0x7FFF, 0x0000, c.opcodes, c.length, {Z: true, N: false}, ["PC", "HL"], {C: true})
       }
-      makeMath16Test('add with C == 0 resulting in zero', 'ADC', 'HL', c.source, 0x0000, 0x0000, 0x0000, c.opcodes, c.length, {Z: true, N: false}, ["PC", "HL"], {C: false})
-      makeMath16Test('add with C == 1 resulting in overflow', 'ADC', 'HL', c.source, 0x8888, 0x8888, 0x1111, c.opcodes, c.length, {P: true, N: false}, ["PC", "HL"], {C: true})
-      makeMath16Test('add with C == 0 resulting in overflow', 'ADC', 'HL', c.source, 0x8888, 0x8888, 0x1110, c.opcodes, c.length, {P: true, N: false}, ["PC", "HL"], {C: false})
+      makeGenericTest('add with C == 0 resulting in zero', 'ADC', 'HL', 'register16', c.source, 'register16', 0, 0x0000, 0x0000, 0x0000, c.opcodes, c.length, {Z: true, N: false}, ["PC", "HL"], {C: false})
+      makeGenericTest('add with C == 1 resulting in overflow', 'ADC', 'HL', 'register16', c.source, 'register16', 0, 0x8888, 0x8888, 0x1111, c.opcodes, c.length, {P: true, N: false}, ["PC", "HL"], {C: true})
+      makeGenericTest('add with C == 0 resulting in overflow', 'ADC', 'HL', 'register16', c.source, 'register16', 0, 0x8888, 0x8888, 0x1110, c.opcodes, c.length, {P: true, N: false}, ["PC", "HL"], {C: false})
     })
   }
 

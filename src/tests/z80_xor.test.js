@@ -3,7 +3,7 @@ import MMU from '../mmu.js'
 
 import { assert } from 'chai'
 
-import {makeMath8Test, makeMath16Test} from './math.js'
+import {makeGenericTest, modeText} from './helpers.js'
 
 
 describe('XOR', function() {
@@ -32,36 +32,21 @@ describe('XOR', function() {
   ]
   for(let i = 0; i < combinations8bit.length; i += 1) {
     const c = combinations8bit[i]
-    let desc = ''
-    switch(c.mode) {
-      case 'register indirect':
-        desc = `XOR A, (${c.source})`
-        break
-      case 'indexed':
-        desc = `XOR A, (${c.source}+d)`
-        break
-      case 'immediate':
-        desc = `XOR A, n`
-        break
-      case 'register':
-      default:
-        desc = `XOR A, ${c.source}`
-        break
-    }
+    let desc = `XOR A, ${modeText(c.source, c.mode)}`
     describe(desc, function() {
-      makeMath8Test('resulting in zero', 'XOR', 'A', 'register', c.source, c.mode, c.offset, 0x05, 0x05, 0x00, c.opcodes, c.length, {H: false, C: false, Z: true, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in non zero', 'XOR', 'A', 'register', c.source, c.mode, c.offset, 0x55, 0x05, 0x50, c.opcodes, c.length, {H: false, C: false, Z: false, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in negative', 'XOR', 'A', 'register', c.source, c.mode, c.offset, 0x8A, 0x0A, 0x80, c.opcodes, c.length, {H: false, C: false, S: true, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in positive', 'XOR', 'A', 'register', c.source, c.mode, c.offset, 0x1A, 0x0A, 0x10, c.opcodes, c.length, {H: false, C: false, S: false, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in even parity', 'XOR', 'A', 'register', c.source, c.mode, c.offset, 0xFF, 0xAA, 0x55, c.opcodes, c.length, {H: false, C: false, P: true, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in odd parity', 'XOR', 'A', 'register', c.source, c.mode, c.offset, 0xFF, 0x5B, 0xA4, c.opcodes, c.length, {H: false, C: false, P: false, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in zero', 'XOR', 'A', 'register', c.source, c.mode, c.offset, 0x05, 0x05, 0x00, c.opcodes, c.length, {H: false, C: false, Z: true, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in non zero', 'XOR', 'A', 'register', c.source, c.mode, c.offset, 0x55, 0x05, 0x50, c.opcodes, c.length, {H: false, C: false, Z: false, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in negative', 'XOR', 'A', 'register', c.source, c.mode, c.offset, 0x8A, 0x0A, 0x80, c.opcodes, c.length, {H: false, C: false, S: true, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in positive', 'XOR', 'A', 'register', c.source, c.mode, c.offset, 0x1A, 0x0A, 0x10, c.opcodes, c.length, {H: false, C: false, S: false, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in even parity', 'XOR', 'A', 'register', c.source, c.mode, c.offset, 0xFF, 0xAA, 0x55, c.opcodes, c.length, {H: false, C: false, P: true, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in odd parity', 'XOR', 'A', 'register', c.source, c.mode, c.offset, 0xFF, 0x5B, 0xA4, c.opcodes, c.length, {H: false, C: false, P: false, N: false}, ["PC", "A"])
     })
   }
 
   // XOR A,A
   describe('XOR A, A', function() {
-    makeMath8Test('resulting in zero', 'XOR', 'A', 'register', 'A', 'register', 0, 0x05, 0x05, 0x00, [0xAF], 1, {H: false, C: false, Z: true, N: false}, ["PC", "A"])
-    makeMath8Test('resulting in positive', 'XOR', 'A', 'register', 'A', 'register', 0, 0x08, 0x08, 0x00, [0xAF], 1, {H: false, C: false, S: false, N: false}, ["PC", "A"])
-    makeMath8Test('resulting in even parity', 'XOR', 'A', 'register', 'A', 'register', 0, 0xAA, 0xAA, 0x00, [0xAF], 1, {H: false, C: false, P: true, N: false}, ["PC", "A"])
+    makeGenericTest('resulting in zero', 'XOR', 'A', 'register', 'A', 'register', 0, 0x05, 0x05, 0x00, [0xAF], 1, {H: false, C: false, Z: true, N: false}, ["PC", "A"])
+    makeGenericTest('resulting in positive', 'XOR', 'A', 'register', 'A', 'register', 0, 0x08, 0x08, 0x00, [0xAF], 1, {H: false, C: false, S: false, N: false}, ["PC", "A"])
+    makeGenericTest('resulting in even parity', 'XOR', 'A', 'register', 'A', 'register', 0, 0xAA, 0xAA, 0x00, [0xAF], 1, {H: false, C: false, P: true, N: false}, ["PC", "A"])
   })
 })

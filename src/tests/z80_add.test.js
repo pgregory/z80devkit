@@ -3,7 +3,7 @@ import MMU from '../mmu.js'
 
 import { assert } from 'chai'
 
-import {makeMath8Test, makeMath16Test} from './math.js'
+import {makeGenericTest, modeText} from './helpers.js'
 
 
 describe('ADD', function() {
@@ -32,48 +32,33 @@ describe('ADD', function() {
   ]
   for(let i = 0; i < combinations8bit.length; i += 1) {
     const c = combinations8bit[i]
-    let desc = ''
-    switch(c.mode) {
-      case 'register indirect':
-        desc = `ADD A, (${c.source})`
-        break
-      case 'indexed':
-        desc = `ADD A, (${c.source}+d)`
-        break
-      case 'immediate':
-        desc = `ADD A, n`
-        break
-      case 'register':
-      default:
-        desc = `ADD A, ${c.source}`
-        break
-    }
+    let desc = `LD A, ${modeText(c.source, c.sourcemode)}`
     describe(desc, function() {
-      makeMath8Test('add resulting in carry', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x81, 0x80, 0x01, c.opcodes, c.length, {C: true, N: false}, ["PC", "A"])
-      makeMath8Test('add resulting in no carry', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x21, 0x20, 0x41, c.opcodes, c.length, {C: false, N: false}, ["PC", "A"])
-      makeMath8Test('add resulting in zero', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x00, 0x00, 0x00, c.opcodes, c.length, {Z: true, N: false}, ["PC", "A"])
-      makeMath8Test('add resulting in zero and carry', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x80, 0x80, 0x00, c.opcodes, c.length, {C: true, Z: true, N: false}, ["PC", "A"])
-      makeMath8Test('add resulting in overflow', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x78, 0x69, 0xE1, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"])
-      makeMath8Test('add resulting in no overflow', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x78, 0x88, 0x00, c.opcodes, c.length, {P: false, N: false}, ["PC", "A"])
+      makeGenericTest('add resulting in carry', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x81, 0x80, 0x01, c.opcodes, c.length, {C: true, N: false}, ["PC", "A"])
+      makeGenericTest('add resulting in no carry', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x21, 0x20, 0x41, c.opcodes, c.length, {C: false, N: false}, ["PC", "A"])
+      makeGenericTest('add resulting in zero', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x00, 0x00, 0x00, c.opcodes, c.length, {Z: true, N: false}, ["PC", "A"])
+      makeGenericTest('add resulting in zero and carry', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x80, 0x80, 0x00, c.opcodes, c.length, {C: true, Z: true, N: false}, ["PC", "A"])
+      makeGenericTest('add resulting in overflow', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x78, 0x69, 0xE1, c.opcodes, c.length, {P: true, N: false}, ["PC", "A"])
+      makeGenericTest('add resulting in no overflow', 'ADD', 'A', 'register', c.source, c.mode, c.offset, 0x78, 0x88, 0x00, c.opcodes, c.length, {P: false, N: false}, ["PC", "A"])
     })
   }
 
   // ADD A,A
   describe('ADD A, A', function() {
-    makeMath8Test('add resulting in carry and overflow', 'ADD', 'A', 'register', 'A', 'register', 0, 0x81, 0x81, 0x02, [0x87], 1, {C: true, P: true, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in no carry or overflow', 'ADD', 'A', 'register', 'A', 'register', 0, 0x21, 0x21, 0x42, [0x87], 1, {C: false, P: false, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in zero with no carry', 'ADD', 'A', 'register', 'A', 'register', 0, 0x00, 0x00, 0x00, [0x87], 1, {C: false, Z: true, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in zero and carry', 'ADD', 'A', 'register', 'A', 'register', 0, 0x80, 0x80, 0x00, [0x87], 1, {C: true, Z: true, N: false}, ["PC", "A"])
+    makeGenericTest('add resulting in carry and overflow', 'ADD', 'A', 'register', 'A', 'register', 0, 0x81, 0x81, 0x02, [0x87], 1, {C: true, P: true, N: false}, ["PC", "A"])
+    makeGenericTest('add resulting in no carry or overflow', 'ADD', 'A', 'register', 'A', 'register', 0, 0x21, 0x21, 0x42, [0x87], 1, {C: false, P: false, N: false}, ["PC", "A"])
+    makeGenericTest('add resulting in zero with no carry', 'ADD', 'A', 'register', 'A', 'register', 0, 0x00, 0x00, 0x00, [0x87], 1, {C: false, Z: true, N: false}, ["PC", "A"])
+    makeGenericTest('add resulting in zero and carry', 'ADD', 'A', 'register', 'A', 'register', 0, 0x80, 0x80, 0x00, [0x87], 1, {C: true, Z: true, N: false}, ["PC", "A"])
   })
 
   // ADD A, n 
   describe('ADD A, n', function() {
-    makeMath8Test('add resulting in carry', 'ADD', 'A', 'register', null, 'immediate', 1, 0x81, 0x80, 0x01, [0xC6, 0x80], 2, {C: true, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in no carry', 'ADD', 'A', 'register', null, 'immediate', 1, 0x21, 0x20, 0x41, [0xC6, 0x20], 2, {C: false, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in zero', 'ADD', 'A', 'register', null, 'immediate', 1, 0x00, 0x00, 0x00, [0xC6, 0x00], 2, {Z: true, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in zero and carry', 'ADD', 'A', 'register', null, 'immediate', 1, 0x80, 0x80, 0x00, [0xC6, 0x80], 2, {C: true, Z: true, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in overflow', 'ADD', 'A', 'register', null, 'immediate', 1, 0x78, 0x69, 0xE1, [0xC6, 0x69], 2, {P: true, N: false}, ["PC", "A"])
-    makeMath8Test('add resulting in no overflow', 'ADD', 'A', 'register', null, 'immediate', 1, 0x78, 0x88, 0x00, [0xC6, 0x88], 2, {P: false, N: false}, ["PC", "A"])
+    makeGenericTest('add resulting in carry', 'ADD', 'A', 'register', null, 'immediate', 1, 0x81, 0x80, 0x01, [0xC6, 0x80], 2, {C: true, N: false}, ["PC", "A"])
+    makeGenericTest('add resulting in no carry', 'ADD', 'A', 'register', null, 'immediate', 1, 0x21, 0x20, 0x41, [0xC6, 0x20], 2, {C: false, N: false}, ["PC", "A"])
+    makeGenericTest('add resulting in zero', 'ADD', 'A', 'register', null, 'immediate', 1, 0x00, 0x00, 0x00, [0xC6, 0x00], 2, {Z: true, N: false}, ["PC", "A"])
+    makeGenericTest('add resulting in zero and carry', 'ADD', 'A', 'register', null, 'immediate', 1, 0x80, 0x80, 0x00, [0xC6, 0x80], 2, {C: true, Z: true, N: false}, ["PC", "A"])
+    makeGenericTest('add resulting in overflow', 'ADD', 'A', 'register', null, 'immediate', 1, 0x78, 0x69, 0xE1, [0xC6, 0x69], 2, {P: true, N: false}, ["PC", "A"])
+    makeGenericTest('add resulting in no overflow', 'ADD', 'A', 'register', null, 'immediate', 1, 0x78, 0x88, 0x00, [0xC6, 0x88], 2, {P: false, N: false}, ["PC", "A"])
   })
 
   // ADD [HL,IX,IY], [BC,DE,HL,IX,IY,SP]
@@ -95,8 +80,8 @@ describe('ADD', function() {
   for(let i = 0; i < combinations16bit.length; i += 1) {
     const c = combinations16bit[i]
     describe(`ADD ${c.dest}, ${c.source}`, function() {
-      makeMath16Test('addition resulting in carry', 'ADD', c.dest, c.source, 0xA8A1, 0xA8A1, 0x5142, c.opcodes, c.length, {C: true, H: true, N: false}, ["PC", c.dest])
-      makeMath16Test('addition resulting in no carry', 'ADD', c.dest, c.source, 0x4343, 0x4343, 0x8686, c.opcodes, c.length, {C: false, H: false, N: false}, ["PC", c.dest])
+      makeGenericTest('addition resulting in carry', 'ADD', c.dest, 'register16', c.source, 'register16', 0, 0xA8A1, 0xA8A1, 0x5142, c.opcodes, c.length, {C: true, H: true, N: false}, ["PC", c.dest])
+      makeGenericTest('addition resulting in no carry', 'ADD', c.dest, 'register16', c.source, 'register16', 0, 0x4343, 0x4343, 0x8686, c.opcodes, c.length, {C: false, H: false, N: false}, ["PC", c.dest])
     })
   }
 

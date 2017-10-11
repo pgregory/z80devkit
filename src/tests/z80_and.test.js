@@ -3,7 +3,7 @@ import MMU from '../mmu.js'
 
 import { assert } from 'chai'
 
-import {makeMath8Test, makeMath16Test} from './math.js'
+import {makeGenericTest, modeText} from './helpers.js'
 
 
 describe('AND', function() {
@@ -32,36 +32,24 @@ describe('AND', function() {
   ]
   for(let i = 0; i < combinations8bit.length; i += 1) {
     const c = combinations8bit[i]
-    let desc = ''
-    switch(c.mode) {
-      case 'register indirect':
-        desc = `AND A, (${c.source})`
-        break
-      case 'indexed':
-        desc = `AND A, (${c.source}+d)`
-        break
-      case 'register':
-      default:
-        desc = `AND A, ${c.source}`
-        break
-    }
+    let desc = `AND A, ${modeText(c.source, c.mode)}`
     describe(desc, function() {
-      makeMath8Test('resulting in zero', 'AND', 'A', 'register', c.source, c.mode, c.offset, 0xAA, 0x55, 0x00, c.opcodes, c.length, {H: true, C: false, Z: true, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in non zero', 'AND', 'A', 'register', c.source, c.mode, c.offset, 0xAA, 0x0A, 0x0A, c.opcodes, c.length, {H: true, C: false, Z: false, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in negative', 'AND', 'A', 'register', c.source, c.mode, c.offset, 0xAA, 0xA0, 0xA0, c.opcodes, c.length, {H: true, C: false, S: true, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in positive', 'AND', 'A', 'register', c.source, c.mode, c.offset, 0xAA, 0x0A, 0x0A, c.opcodes, c.length, {H: true, C: false, S: false, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in even parity', 'AND', 'A', 'register', c.source, c.mode, c.offset, 0xAA, 0x88, 0x88, c.opcodes, c.length, {H: true, C: false, P: true, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in odd parity', 'AND', 'A', 'register', c.source, c.mode, c.offset, 0xAA, 0x80, 0x80, c.opcodes, c.length, {H: true, C: false, P: false, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in zero', 'AND', 'A', 'register', c.source, c.mode, c.offset, 0xAA, 0x55, 0x00, c.opcodes, c.length, {H: true, C: false, Z: true, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in non zero', 'AND', 'A', 'register', c.source, c.mode, c.offset, 0xAA, 0x0A, 0x0A, c.opcodes, c.length, {H: true, C: false, Z: false, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in negative', 'AND', 'A', 'register', c.source, c.mode, c.offset, 0xAA, 0xA0, 0xA0, c.opcodes, c.length, {H: true, C: false, S: true, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in positive', 'AND', 'A', 'register', c.source, c.mode, c.offset, 0xAA, 0x0A, 0x0A, c.opcodes, c.length, {H: true, C: false, S: false, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in even parity', 'AND', 'A', 'register', c.source, c.mode, c.offset, 0xAA, 0x88, 0x88, c.opcodes, c.length, {H: true, C: false, P: true, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in odd parity', 'AND', 'A', 'register', c.source, c.mode, c.offset, 0xAA, 0x80, 0x80, c.opcodes, c.length, {H: true, C: false, P: false, N: false}, ["PC", "A"])
     })
   }
 
   // AND A,A
   describe('AND A, A', function() {
-      makeMath8Test('resulting in zero', 'AND', 'A', 'register', 'A', 'register', 0, 0x00, 0x00, 0x00, [0xA7], 1, {H: true, C: false, Z: true, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in non zero', 'AND', 'A', 'register', 'A', 'register', 0, 0xAA, 0xAA, 0xAA, [0xA7], 1, {H: true, C: false, Z: false, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in negative', 'AND', 'A', 'register', 'A', 'register', 0, 0x88, 0x88, 0x88, [0xA7], 1, {H: true, C: false, S: true, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in positive', 'AND', 'A', 'register', 'A', 'register', 0, 0x55, 0x55, 0x55, [0xA7], 1, {H: true, C: false, S: false, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in even parity', 'AND', 'A', 'register', 'A', 'register', 0, 0x11, 0x11, 0x11, [0xA7], 1, {H: true, C: false, P: true, N: false}, ["PC", "A"])
-      makeMath8Test('resulting in odd parity', 'AND', 'A', 'register', 'A', 'register', 0, 0x40, 0x40, 0x40, [0xA7], 1, {H: true, C: false, P: false, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in zero', 'AND', 'A', 'register', 'A', 'register', 0, 0x00, 0x00, 0x00, [0xA7], 1, {H: true, C: false, Z: true, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in non zero', 'AND', 'A', 'register', 'A', 'register', 0, 0xAA, 0xAA, 0xAA, [0xA7], 1, {H: true, C: false, Z: false, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in negative', 'AND', 'A', 'register', 'A', 'register', 0, 0x88, 0x88, 0x88, [0xA7], 1, {H: true, C: false, S: true, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in positive', 'AND', 'A', 'register', 'A', 'register', 0, 0x55, 0x55, 0x55, [0xA7], 1, {H: true, C: false, S: false, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in even parity', 'AND', 'A', 'register', 'A', 'register', 0, 0x11, 0x11, 0x11, [0xA7], 1, {H: true, C: false, P: true, N: false}, ["PC", "A"])
+      makeGenericTest('resulting in odd parity', 'AND', 'A', 'register', 'A', 'register', 0, 0x40, 0x40, 0x40, [0xA7], 1, {H: true, C: false, P: false, N: false}, ["PC", "A"])
   })
 })

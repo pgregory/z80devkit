@@ -3,7 +3,7 @@ import MMU from '../mmu.js'
 
 import { assert } from 'chai'
 
-import {makeMath8Test, makeMath16Test} from './math.js'
+import {makeGenericTest, modeText} from './helpers.js'
 
 
 describe('DEC', function() {
@@ -32,24 +32,12 @@ describe('DEC', function() {
   ]
   for(let i = 0; i < combinations8bit.length; i += 1) {
     const c = combinations8bit[i]
-    let desc = ''
-    switch(c.mode) {
-      case 'register indirect':
-        desc = `DEC (${c.dest})`
-        break
-      case 'indexed':
-        desc = `DEC (${c.dest}+d)`
-        break
-      case 'register':
-      default:
-        desc = `DEC ${c.dest}`
-        break
-    }
+    let desc = `DEC ${modeText(c.dest, c.mode)}`
     describe(desc, function() {
-      makeMath8Test('decrement resulting in zero', 'DEC', c.dest, c.mode, c.dest, c.mode, c.offset, 0x01, 0x01, 0x00, c.opcodes, c.length, {Z: true, N: true}, ["PC", c.dest])
-      makeMath8Test('decrement resulting in overflow', 'DEC', c.dest, c.mode, c.dest, c.mode, c.offset, 0x80, 0x80, 0x7F, c.opcodes, c.length, {P: true, N: true}, ["PC", c.dest])
-      makeMath8Test('decrement resulting in sign', 'DEC', c.dest, c.mode, c.dest, c.mode, c.offset, 0x00, 0x00, 0xFF, c.opcodes, c.length, {S: true, N: true}, ["PC", c.dest])
-      makeMath8Test('decrement resulting in half carry', 'DEC', c.dest, c.mode, c.dest, c.mode, c.offset, 0x10, 0x10, 0x0F, c.opcodes, c.length, {H: true, N: true}, ["PC", c.dest])
+      makeGenericTest('decrement resulting in zero', 'DEC', c.dest, c.mode, c.dest, c.mode, c.offset, 0x01, 0x01, 0x00, c.opcodes, c.length, {Z: true, N: true}, ["PC", c.dest])
+      makeGenericTest('decrement resulting in overflow', 'DEC', c.dest, c.mode, c.dest, c.mode, c.offset, 0x80, 0x80, 0x7F, c.opcodes, c.length, {P: true, N: true}, ["PC", c.dest])
+      makeGenericTest('decrement resulting in sign', 'DEC', c.dest, c.mode, c.dest, c.mode, c.offset, 0x00, 0x00, 0xFF, c.opcodes, c.length, {S: true, N: true}, ["PC", c.dest])
+      makeGenericTest('decrement resulting in half carry', 'DEC', c.dest, c.mode, c.dest, c.mode, c.offset, 0x10, 0x10, 0x0F, c.opcodes, c.length, {H: true, N: true}, ["PC", c.dest])
     })
   }
 
@@ -66,8 +54,8 @@ describe('DEC', function() {
   for(let i = 0; i < combinations16bit.length; i += 1) {
     const c = combinations16bit[i]
     describe(`INC ${c.dest}`, function() {
-      makeMath16Test('decrement resulting in zero', 'DEC', c.dest, c.dest, 0x0001, 0x0001, 0x0000, c.opcodes, c.length, {}, ["PC", c.dest])
-      makeMath16Test('decrement resulting in non zero', 'DEC', c.dest, c.dest, 0x0002, 0x0002, 0x0001, c.opcodes, c.length, {}, ["PC", c.dest])
+      makeGenericTest('decrement resulting in zero', 'DEC', c.dest, 'register16', c.dest, 'register16', 0, 0x0001, 0x0001, 0x0000, c.opcodes, c.length, {}, ["PC", c.dest])
+      makeGenericTest('decrement resulting in non zero', 'DEC', c.dest, 'register16', c.dest, 'register16', 0, 0x0002, 0x0002, 0x0001, c.opcodes, c.length, {}, ["PC", c.dest])
     })
   }
 

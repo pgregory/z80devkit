@@ -3,8 +3,7 @@ import MMU from '../mmu.js'
 
 import { assert } from 'chai'
 
-import {makeMath8Test, makeMath16Test} from './math.js'
-import {shouldNotAlterFlags, selectRegs, shouldNotAffectRegisters} from './helpers.js'
+import {makeGenericTest, modeText} from './helpers.js'
 
 describe('SBC', function() {
   beforeEach(function() {
@@ -34,31 +33,16 @@ describe('SBC', function() {
 
   for(let i = 0; i < combinations8bit.length; i += 1) {
     const c = combinations8bit[i]
-    let desc = ''
-    switch(c.mode) {
-      case 'register indirect':
-        desc = `SBC A, (${c.source})`
-        break
-      case 'indexed':
-        desc = `SBC A, (${c.source}+d)`
-        break
-      case 'immediate':
-        desc = `SBC A, n`
-        break
-      case 'register':
-      default:
-        desc = `SBC A, ${c.source}`
-        break
-    }
+    let desc = `SBC A, ${modeText(c.source, c.mode)}`
     describe(desc, function() {
-      makeMath8Test('subtract with C == 1 resulting in negative', 'SBC', 'A', 'register', c.source, c.mode, c.offset, 0x01, 0x01, 0xFF, c.opcodes, c.length, {S: true, N: true}, ["PC", "A"], {C: true})
+      makeGenericTest('subtract with C == 1 resulting in negative', 'SBC', 'A', 'register', c.source, c.mode, c.offset, 0x01, 0x01, 0xFF, c.opcodes, c.length, {S: true, N: true}, ["PC", "A"], {C: true})
       if(c.source !== 'A') {
-        makeMath8Test('subtract with C == 0 resulting in negative', 'SBC', 'A', 'register', c.source, c.mode, c.offset, 0x01, 0x02, 0xFF, c.opcodes, c.length, {S: true, N: true}, ["PC", "A"], {C: false})
-        makeMath8Test('subtract with C == 1 resulting in zero', 'SBC', 'A', 'register', c.source, c.mode, c.offset, 0x01, 0x00, 0x00, c.opcodes, c.length, {Z: true, N: true}, ["PC", "A"], {C: true})
-        makeMath8Test('subtract with C == 1 resulting in overflow', 'SBC', 'A', 'register', c.source, c.mode, c.offset, 0x7F, 0xBF, 0xBF, c.opcodes, c.length, {P: true, N: true}, ["PC", "A"], {C: true})
-        makeMath8Test('subtract with C == 0 resulting in overflow', 'SBC', 'A', 'register', c.source, c.mode, c.offset, 0x7F, 0xC0, 0xBF, c.opcodes, c.length, {P: true, N: true}, ["PC", "A"], {C: false})
+        makeGenericTest('subtract with C == 0 resulting in negative', 'SBC', 'A', 'register', c.source, c.mode, c.offset, 0x01, 0x02, 0xFF, c.opcodes, c.length, {S: true, N: true}, ["PC", "A"], {C: false})
+        makeGenericTest('subtract with C == 1 resulting in zero', 'SBC', 'A', 'register', c.source, c.mode, c.offset, 0x01, 0x00, 0x00, c.opcodes, c.length, {Z: true, N: true}, ["PC", "A"], {C: true})
+        makeGenericTest('subtract with C == 1 resulting in overflow', 'SBC', 'A', 'register', c.source, c.mode, c.offset, 0x7F, 0xBF, 0xBF, c.opcodes, c.length, {P: true, N: true}, ["PC", "A"], {C: true})
+        makeGenericTest('subtract with C == 0 resulting in overflow', 'SBC', 'A', 'register', c.source, c.mode, c.offset, 0x7F, 0xC0, 0xBF, c.opcodes, c.length, {P: true, N: true}, ["PC", "A"], {C: false})
       }
-      makeMath8Test('subtract with C == 0 resulting in zero', 'SBC', 'A', 'register', c.source, c.mode, c.offset, 0x01, 0x01, 0x00, c.opcodes, c.length, {Z: true, N: true}, ["PC", "A"], {C: false})
+      makeGenericTest('subtract with C == 0 resulting in zero', 'SBC', 'A', 'register', c.source, c.mode, c.offset, 0x01, 0x01, 0x00, c.opcodes, c.length, {Z: true, N: true}, ["PC", "A"], {C: false})
     })
   }
 
@@ -73,13 +57,13 @@ describe('SBC', function() {
     const c = combinations16bit[i]
     describe(`SBC HL, ${c.source}`, function() {
       if(c.source !== 'HL') {
-        makeMath16Test('subtract with C == 1 resulting in negative', 'SBC', 'HL', c.source, 0x0001, 0x0001, 0xFFFF, c.opcodes, c.length, {S: true, N: true}, ["PC", "HL"], {C: true})
-        makeMath16Test('subtract with C == 0 resulting in negative', 'SBC', 'HL', c.source, 0x0001, 0x0002, 0xFFFF, c.opcodes, c.length, {S: true, N: true}, ["PC", "HL"], {C: false})
-        makeMath16Test('subtract with C == 1 resulting in zero', 'SBC', 'HL', c.source, 0x0500, 0x04FF, 0x0000, c.opcodes, c.length, {Z: true, N: true}, ["PC", "HL"], {C: true})
-        makeMath16Test('subtract with C == 1 resulting in overflow', 'SBC', 'HL', c.source, 0x7FFF, 0xC000, 0xBFFE, c.opcodes, c.length, {P: true, N: true}, ["PC", "HL"], {C: true})
-        makeMath16Test('subtract with C == 0 resulting in overflow', 'SBC', 'HL', c.source, 0x7FFF, 0xC000, 0xBFFF, c.opcodes, c.length, {P: true, N: true}, ["PC", "HL"], {C: false})
+        makeGenericTest('subtract with C == 1 resulting in negative', 'SBC', 'HL', 'register16', c.source, 'register16', 0, 0x0001, 0x0001, 0xFFFF, c.opcodes, c.length, {S: true, N: true}, ["PC", "HL"], {C: true})
+        makeGenericTest('subtract with C == 0 resulting in negative', 'SBC', 'HL', 'register16', c.source, 'register16', 0, 0x0001, 0x0002, 0xFFFF, c.opcodes, c.length, {S: true, N: true}, ["PC", "HL"], {C: false})
+        makeGenericTest('subtract with C == 1 resulting in zero', 'SBC', 'HL', 'register16', c.source, 'register16', 0, 0x0500, 0x04FF, 0x0000, c.opcodes, c.length, {Z: true, N: true}, ["PC", "HL"], {C: true})
+        makeGenericTest('subtract with C == 1 resulting in overflow', 'SBC', 'HL', 'register16', c.source, 'register16', 0, 0x7FFF, 0xC000, 0xBFFE, c.opcodes, c.length, {P: true, N: true}, ["PC", "HL"], {C: true})
+        makeGenericTest('subtract with C == 0 resulting in overflow', 'SBC', 'HL', 'register16', c.source, 'register16', 0, 0x7FFF, 0xC000, 0xBFFF, c.opcodes, c.length, {P: true, N: true}, ["PC", "HL"], {C: false})
       }
-      makeMath16Test('subtract with C == 0 resulting in zero', 'SBC', 'HL', c.source, 0x0500, 0x0500, 0x0000, c.opcodes, c.length, {Z: true, N: true}, ["PC", "HL"], {C: false})
+      makeGenericTest('subtract with C == 0 resulting in zero', 'SBC', 'HL', 'register16', c.source, 'register16', 0, 0x0500, 0x0500, 0x0000, c.opcodes, c.length, {Z: true, N: true}, ["PC", "HL"], {C: false})
     })
   }
 
