@@ -2456,7 +2456,7 @@ export default class Z80 {
       /* F9 */ {
         name: "LD SP,HL",
         exec() {
-          LD_RR_RR(z80, z80.regOffsets16.SP, z80.regOffsets16.HL)
+          LD_RR_RR(z80, z80.regOffsets16.SP, z80.regOffsets16.HL_IX_IY)
         },
         length: 1
       },
