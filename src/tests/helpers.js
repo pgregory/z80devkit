@@ -25,6 +25,33 @@ const checkFlags = function(flags) {
   }
 }
 
+const checkMemory = function(address, expected) {
+  it('should set the stack contents', function() {
+    let result = true
+    const dv1 = new Uint8Array(expected)
+    for(let i = 0; i < dv1.byteLength; i += 1) {
+      if(this.mmu.readByte(address + i) != expected[i]) {
+        result = false
+      }
+    }
+    assert.equal(result, true, 'memory contents should match')
+  })
+} 
+
+const checkStack = function(expected) {
+  it('should set the stack contents', function() {
+    let result = true
+    const dv1 = new Uint8Array(expected)
+    const address = this.z80.reg16[this.z80.regOffsets16.SP]
+    for(let i = 0; i < dv1.byteLength; i += 1) {
+      if(this.mmu.readByte(address + i) != expected[i]) {
+        result = false
+      }
+    }
+    assert.equal(result, true, 'stack contents should match')
+  })
+} 
+
 const allRegs = { 
   'A': ['AF'], 
   'F': ['AF'], 
@@ -64,17 +91,59 @@ const allRegs = {
 }
 
 function selectRegs(regs) {
-  let cleanRegs = Object.assign({}, allRegs)
-  for(let i = 0; i < regs.length; i += 1) {
-    const reg = regs[i]
-    delete cleanRegs[reg]
-    if(reg && allRegs[reg].length > 0) {
-      for(let o in allRegs[reg]) {
-        delete cleanRegs[allRegs[reg][o]]
+  let selector = regs
+  // Fixup old style values
+  if(Array.isArray(regs)) {
+    selector = {}
+    for(let i = 0; i < regs.length; i += 1) {
+      const reg = regs[i]
+      selector[reg] = false
+      if(reg && allRegs[reg] && Array.isArray(allRegs[reg])) {
+        for(let o = 0; o < allRegs[reg].length; o += 1) {
+          selector[allRegs[reg][o]] = false
+        }
       }
     }
   }
-  return cleanRegs
+  let checkRegs = {}
+  Object.getOwnPropertyNames(allRegs).forEach(
+    (val) => {
+      if(selector.hasOwnProperty(val)) {
+        if(selector[val]) {
+          checkRegs[val] = selector[val]
+        }
+      } else {
+        checkRegs[val] = false
+      }
+    }
+  )
+  return checkRegs
+}
+
+const checkRegisters = function(registers) {
+  Object.getOwnPropertyNames(registers).forEach(
+    (val) => {
+      if(registers[val]) {
+        it(`should set register ${val} to ${registers[val]}`, function() {
+          if(val in this.z80.regOffsets8) {
+            assert.equal(this.z80.reg8[this.z80.regOffsets8[val]], registers[val], `${val} === ${registers[val]}`)
+          } else if(val in this.z80.regOffsets16) {
+            assert.equal(this.z80.reg16[this.z80.regOffsets16[val]], registers[val], `${val} === ${registers[val]}`)
+          }
+        })
+      } else {
+        it(`should leave register ${val}`, function() {
+          if(val in this.z80.regOffsets8) {
+            assert.equal(this.z80.reg8[this.z80.regOffsets8[val]], this.initReg8[this.z80.regOffsets8[val]],
+              `${val} unchanged`)
+          } else if(val in this.z80.regOffsets16) {
+            assert.equal(this.z80.reg16[this.z80.regOffsets16[val]], this.initReg16[this.z80.regOffsets16[val]],
+              `${val} unchanged`)
+          }
+        })
+      }
+    }
+  )
 }
 
 const shouldNotAffectRegisters = function(registers) {
@@ -94,7 +163,7 @@ const shouldNotAffectRegisters = function(registers) {
   })
 }
 
-function makeGenericTest(desc, op, dest, destmode, source, sourcemode, offset, valA, valB, expected, opcodes, length, flags, registersAffected, initFlags, initRegs) {
+function makeGenericTest(desc, op, dest, destmode, source, sourcemode, offset, valA, valB, expected, opcodes, length, flags, registersAffected, initFlags, initRegs, memoryTestAddress, memoryTestExpected, stackExpected) {
   describe(desc, function() {
     beforeEach(function() {
       const code = new Uint8Array(opcodes)
@@ -111,6 +180,19 @@ function makeGenericTest(desc, op, dest, destmode, source, sourcemode, offset, v
       this.initRegs = new ArrayBuffer(this.z80.registers.byteLength)
       this.initReg8 = new Uint8Array(this.initRegs)
       this.initReg16 = new Uint16Array(this.initRegs)
+      // Transfer in any default registers
+      if(initRegs) {
+        Object.getOwnPropertyNames(initRegs).forEach(
+          (val) => {
+            if(val in this.z80.regOffsets8) {
+              this.z80.reg8[this.z80.regOffsets8[val]] = initRegs[val]
+            } else if(val in this.z80.regOffsets16) {
+              this.z80.reg16[this.z80.regOffsets16[val]] = initRegs[val]
+            }
+          }
+        )
+      }
+
       switch(destmode) {
         case 'register':
         case 'register8':
@@ -193,48 +275,50 @@ function makeGenericTest(desc, op, dest, destmode, source, sourcemode, offset, v
       this.z80.stepExecution()
     })
     // Check result
-    it(`should set the expected result ${expected}`, function() {
-      switch(destmode) {
-        case 'register':
-        case 'register8':
-          assert.equal(this.z80.reg8[this.z80.regOffsets8[dest]], expected, `${dest} === ${expected}`)
-          break
-        case 'register16':
-          assert.equal(this.z80.reg16[this.z80.regOffsets16[dest]], expected, `${dest} === ${expected}`)
-          break
-        case 'register indirect':
-          {
-            const addr = this.z80.reg16[this.z80.regOffsets16[dest]]
-            const val = this.mmu.readByte(addr)
-            assert.equal(val, expected, `(${dest}) === ${expected}`)
-          }
-          break
-        case 'indexed':
-          {
-            const addr = this.z80.reg16[this.z80.regOffsets16[dest]]
-            const val = this.mmu.readByte(addr + offset)
-            assert.equal(val, expected, `(${dest}) === ${expected}`)
-          }
-          break
-        case 'extended':
-        case 'extended8':
-          {
-            const addr = 0x0000 
-            const val = this.mmu.readByte(addr + offset)
-            assert.equal(val, expected, `(0x0000) === ${expected}`)
-          }
-          break
-        case 'extended16':
-          {
-            const addr = 0x0000 
-            const val = this.mmu.readWord(addr + offset)
-            assert.equal(val, expected, `(0x0000) === ${expected}`)
-          }
-          break
-        default:
-          break
-      }     
-    })
+    if(expected) {
+      it(`should set the expected result ${expected}`, function() {
+        switch(destmode) {
+          case 'register':
+          case 'register8':
+            assert.equal(this.z80.reg8[this.z80.regOffsets8[dest]], expected, `${dest} === ${expected}`)
+            break
+          case 'register16':
+            assert.equal(this.z80.reg16[this.z80.regOffsets16[dest]], expected, `${dest} === ${expected}`)
+            break
+          case 'register indirect':
+            {
+              const addr = this.z80.reg16[this.z80.regOffsets16[dest]]
+              const val = this.mmu.readByte(addr)
+              assert.equal(val, expected, `(${dest}) === ${expected}`)
+            }
+            break
+          case 'indexed':
+            {
+              const addr = this.z80.reg16[this.z80.regOffsets16[dest]]
+              const val = this.mmu.readByte(addr + offset)
+              assert.equal(val, expected, `(${dest}) === ${expected}`)
+            }
+            break
+          case 'extended':
+          case 'extended8':
+            {
+              const addr = 0x0000 
+              const val = this.mmu.readByte(addr + offset)
+              assert.equal(val, expected, `(0x0000) === ${expected}`)
+            }
+            break
+          case 'extended16':
+            {
+              const addr = 0x0000 
+              const val = this.mmu.readWord(addr + offset)
+              assert.equal(val, expected, `(0x0000) === ${expected}`)
+            }
+            break
+          default:
+            break
+        }     
+      })
+    }
     // Check PC is updated appropriately.
     it(`should advance PC by ${length}`, function() {
       assert.equal(this.z80.reg16[this.z80.regOffsets16.PC], this.initReg16[this.z80.regOffsets16.PC] + length,
@@ -245,7 +329,13 @@ function makeGenericTest(desc, op, dest, destmode, source, sourcemode, offset, v
     } else {
       shouldNotAlterFlags()
     }
-    shouldNotAffectRegisters(selectRegs(registersAffected))
+    checkRegisters(selectRegs(registersAffected))
+    if(memoryTestAddress && memoryTestExpected) {
+      checkMemory(memoryTestAddress, memoryTestExpected)
+    }
+    if(stackExpected) {
+      checkStack(stackExpected)
+    }
   })
 }
 
@@ -277,7 +367,6 @@ function modeText(operand, mode) {
 export { 
   shouldNotAlterFlags,
   selectRegs,
-  shouldNotAffectRegisters,
   checkFlags,
   makeGenericTest,
   modeText,
