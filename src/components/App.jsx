@@ -5,6 +5,7 @@ import Registers from './Registers.jsx'
 import Flags from './Flags.jsx'
 import Disassembly from './Disassembly.jsx'
 import Stack from './Stack.jsx'
+import {hexWord} from '../utilities.js'
 
 class App extends React.Component {
   constructor(props) {
@@ -15,11 +16,15 @@ class App extends React.Component {
       flags: this.props.z80.flags,
       altFlags: this.props.z80.altFlags,
       z80: this.props.z80,
+			breakpoints: [ ],
+			newBreakpoint: "0200",
     }
 
     this.handleStep = this.handleStep.bind(this)
     this.handleRun = this.handleRun.bind(this)
     this.runStep = this.runStep.bind(this)
+    this.handleAddBreakpoint = this.handleAddBreakpoint.bind(this)
+    this.handleChangeBreakpoint = this.handleChangeBreakpoint.bind(this)
 
     this.timer = null
   }
@@ -61,13 +66,31 @@ class App extends React.Component {
       this.timer = setInterval(this.runStep, 5)
     }
   }
+
+	handleChangeBreakpoint(e) {
+		this.setState({newBreakpoint: e.target.value})
+	}
+
+  handleAddBreakpoint(e) {
+		var address = parseInt(this.state.newBreakpoint, 16)
+		this.setState(prevState => ({
+			breakpoints: [...prevState.breakpoints, address]
+		}))
+  }
   
   runStep() {
-    this.props.z80.stepExecution()
-    this.setState(prevState => ({
-      registers: update(prevState.registers, {$set: this.getRegisters()}),
-      flags: update(prevState.flags, {$set: this.props.z80.flags}),
-    }))
+		// Check for any breakpoints
+		if(this.state.breakpoints.includes(this.props.z80.getRegister16("PC")) && this.time !== null) {
+      // Stop execution
+      clearInterval(this.timer)
+      this.timer = null
+		} else {
+			this.props.z80.stepExecution()
+			this.setState(prevState => ({
+				registers: update(prevState.registers, {$set: this.getRegisters()}),
+				flags: update(prevState.flags, {$set: this.props.z80.flags}),
+			}))
+		}
   }
 
   render() {
@@ -82,6 +105,14 @@ class App extends React.Component {
       display: 'flex',
       flexDirection: 'column'
     }
+    const breakpointStyle = {
+      fontFamily: "monospace",
+      fontSize: 12
+    }
+		const breakpoints = []
+		for(const[index, value] of this.state.breakpoints.entries()) {
+			breakpoints.push(<li style={breakpointStyle} key={index}>{hexWord(value)}</li>)
+		}
     return (
       <div style={panelStyle}>
         <div style={columnStyle}>
@@ -102,6 +133,15 @@ class App extends React.Component {
         </div>
         <div style={columnStyle}>
           <Stack address={this.state.registers.HL} z80={this.state.z80}/>
+        </div>
+        <div style={columnStyle}>
+					<div>
+						<ul>
+							{breakpoints}
+						</ul>
+					</div>
+					<input type="text" value={this.state.newBreakpoint || ''} onChange={this.handleChangeBreakpoint}/>
+          <button onClick={this.handleAddBreakpoint}>Add</button>
         </div>
       </div>
     )
