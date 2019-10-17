@@ -5,15 +5,18 @@ module.exports = {
   target: 'node',
   externals: [nodeExternals()],
   module: {
-    loaders: [
+    rules: [
       {
-        test: /\.js$/,
-        loader: 'babel-loader',
-        options: {
-          presets: ['es2015'],
-          plugins: ['macros'],
-        }
-      }
+        test: /\.jsx?$/,
+        exclude: /(node_modules)/,
+        use: {
+          loader: 'babel-loader',
+          options: {
+            presets: ['es2015', 'react'],
+            plugins: ['macros'],
+          },
+        },
+      },
     ]
   }
 };
