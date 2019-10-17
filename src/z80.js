@@ -2364,6 +2364,18 @@ export default class Z80 {
             return true
           }
 				},
+				disasm(address) {
+          // Read the instruction from the ed table and disassemble that.
+          const opcode = z80.mmu.readByte(address + 1)
+					const instr = z80.ed_instructions[opcode]
+					return z80.disasm(instr, address + 1)
+				},
+				calcLength(address) {
+          // Read the instruction from the ed table and call that.
+          const opcode = z80.mmu.readByte(address + 1)
+					const instr = z80.ed_instructions[opcode]
+					return this.length + instr.length
+				},
 				length: 1
 			 },
       /* EE */ {
@@ -2409,8 +2421,8 @@ export default class Z80 {
       /* F3 */ {
 				name: "DI",
 				exec() {
+					console.log("DI - no effect");
 				},
-				unimplemented: true,
 				length: 1
 			 },
       /* F4 */ {
@@ -2470,8 +2482,9 @@ export default class Z80 {
       /* FB */ {
 				name: "EI",
 				exec() {
+					console.log("EI - no effect");
 				},
-				unimplemented: true,
+				//unimplemented: true,
 				length: 1
 			 },
       /* FC */ {
@@ -5304,16 +5317,20 @@ export default class Z80 {
   hexOpCodeAt(address) {
     const opcode = this.mmu.readByte(address)
     let hex = hexByte(opcode)
-    for(let b = 1; b < this.instructions[opcode].length; b += 1 ) {
+    for(let b = 1; b < this.opcodeLengthAt(address); b += 1 ) {
       hex += hexByte(this.mmu.readByte(address + b))
     }
     return (hex + "        ").substr(0, 8)
   }
 
   disasm(opcode, address) {
-    return opcode.name.
-      replace(/\\1/, ("00" + this.mmu.readByte(address + 1).toString(16).toUpperCase()).substr(-2)).
-      replace(/\\2/, ("00" + this.mmu.readByte(address + 2).toString(16).toUpperCase()).substr(-2))
+		if('disasm' in opcode) {
+			return opcode.disasm(address)
+		} else {
+			return opcode.name.
+				replace(/\\1/, ("00" + this.mmu.readByte(address + 1).toString(16).toUpperCase()).substr(-2)).
+				replace(/\\2/, ("00" + this.mmu.readByte(address + 2).toString(16).toUpperCase()).substr(-2))
+		}
   }
 
   disasmOpCodeAt(address) {
@@ -5331,7 +5348,13 @@ export default class Z80 {
 
   opcodeLengthAt(address) {
     const opcode = this.mmu.readByte(address)
-    return this.instructions[opcode].length
+		const instr = this.instructions[opcode]
+
+		if('calcLength' in instr) {
+			return instr.calcLength(address)
+		} else {
+			return instr.length
+		}
   }
 
   stepExecution() {
