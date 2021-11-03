@@ -3,6 +3,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin')
 const { CleanWebpackPlugin } = require('clean-webpack-plugin')
 
 module.exports = {
+  mode: 'development',
   entry: {
     app: './src/index.js',
   },
@@ -25,8 +26,8 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['@babel/preset-react', '@babel/preset-env'],
-            plugins: ['babel-plugin-js-macros'],
+            presets: ['@babel/preset-env', '@babel/preset-react'],
+            plugins: ['js-macros'],
           },
         },
       },

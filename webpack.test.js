@@ -3,6 +3,7 @@ var nodeExternals = require('webpack-node-externals')
 
 module.exports = {
   target: 'node',
+  mode: 'development',
   externals: [nodeExternals()],
   module: {
     rules: [
@@ -12,8 +13,8 @@ module.exports = {
         use: {
           loader: 'babel-loader',
           options: {
-            presets: ['es2015', 'react'],
-            plugins: ['macros'],
+            presets: ['@babel/preset-env', '@babel/preset-react'],
+            plugins: ['js-macros'],
           },
         },
       },
